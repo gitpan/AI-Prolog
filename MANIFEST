@@ -1,0 +1,23 @@
+Changes
+examples/append.pl
+examples/benchmark.pl
+examples/if_else.pl
+examples/monkey.pl
+examples/trace.pl
+lib/AI/Prolog.pm
+lib/AI/Prolog/ChoicePoint.pm
+lib/AI/Prolog/Engine.pm
+lib/AI/Prolog/Parser.pm
+lib/AI/Prolog/Term.pm
+lib/AI/Prolog/TermList.pm
+Makefile.PL
+MANIFEST			This list of files
+META.yml			Module meta-data (added by MakeMaker)
+README
+t/05examples.t
+t/10choicepoint.t
+t/20term.t
+t/30termlist.t
+t/40parser.t
+t/50engine.t
+t/60aiprolog.t
