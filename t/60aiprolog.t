@@ -1,4 +1,3 @@
-
 #!/usr/bin/perl
 # '$Id: 60aiprolog.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
 use warnings;

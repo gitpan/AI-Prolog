@@ -1,10 +1,12 @@
 package AI::Prolog::Term;
+$REVISION = '$Id: Term.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
 
-$VERSION = '0.01';
+$VERSION = '0.03';
 use strict;
 use warnings;
 
 use aliased 'AI::Prolog::Parser';
+use aliased 'Hash::AsObject';
 
 use constant NULL => 'null';
 
@@ -158,7 +160,7 @@ sub setarg {
     }
 }
 
-# retrievs an argument of a term
+# retrieves an argument of a term
 sub getarg {
     my ($self, $pos) = @_;
     # should check if position is valid
@@ -274,6 +276,65 @@ sub _getvar {
     return $l->[$varid];
 }
 
+sub to_data {
+    my $self = shift;
+    $self->{_results} = {};
+    # @results is the full results, if we ever need it
+    my @results = $self->_to_data($self);
+    return AsObject->new($self->{_results}), \@results;
+}
+
+sub _to_data {
+    my ($self, $parent) = @_;
+    if (defined $self->{varname}) {
+        # XXX here's where the [HEAD|TAIL] bug is.  The engine works fine,
+        # but we can't bind TAIL to a result object and are forced to
+        # switch to raw_results.
+        my $varname = delete $self->{varname};
+        ($parent->{_results}{$varname}) = $self->_to_data($parent);
+        $self->{varname} = $varname;
+    }
+    if ($self->bound) {
+        my $functor = $self->functor;
+        my $arity   = $self->arity;
+        return $self->ref->_to_data($parent) if $self->deref;
+        return [] if NULL eq $functor && ! $arity;
+        if ("cons" eq $functor && 2 == $arity) {
+            my @result = $self->{args}[0]->_to_data($parent);
+            my $term   = $self->{args}[1];
+
+            while ("cons" eq $term->getfunctor && 2 == $term->getarity) {
+                push @result => $term->getarg(0)->_to_data($parent);
+                $term    = $term->getarg(1);
+            }
+
+            # XXX Not really sure about this one
+            push @result => $term->_to_data($parent) 
+                unless NULL eq $term->getfunctor && ! $term->getarity;
+            #    ? "]"
+            #    : "|" . $term->_to_data($parent) . "]";
+            return \@result;
+        }
+        else {
+            my @results = $self->functor;
+            if ($self->arity) {
+                #push @results => [];
+                my $arity = $self->arity;
+                my @args = @{$self->args};
+                if (@args) {
+                    for my $i (0 .. $arity -1) {
+                        push @results => $args[$i]->_to_data($parent);
+                    }
+                    # I have no idea what the following line was doing.
+                    #push @results => $args[$arity - 1]->_to_data($parent)
+                }
+            }
+            return @results;
+        }
+    } # else unbound;
+    return undef;
+}
+
 sub to_string {
     my ($self, $extended) = @_;
     if ($self->bound) {
@@ -336,7 +397,7 @@ sub _new_from_parser {
 
     $parser->skipspace; # otherwise we crash when we hit leading
                         # spaces
-    if ($parser->current =~ /^[[:lower:]]$/ ||
+    if ($parser->current =~ /^[[:lower:]'"]$/ ||
         ($self->internalparse && '_' eq $parser->current)) {
         $self->{functor} = $parser->getname;
         $self->{bound}   = 1;
@@ -370,9 +431,11 @@ sub _new_from_parser {
         }
     }
     elsif ($parser->current =~ /^[[:upper:]]$/) {
-        $self->{bound} = 1;
-        $self->{deref} = 1;
-        $self->{ref}   = $parser->getvar;
+        $self->{bound}     = 1;
+        $self->{deref}     = 1;
+        my ($ref, $string) = $parser->getvar;
+        $self->{ref}       = $ref;
+        $self->{varname}   = $string;
     }
     elsif ($parser->current =~ /^[[:digit:]]$/) {
         $self->{functor} = $parser->getnum;
@@ -455,3 +518,34 @@ AI::Prolog::Term - Create Prolog Terms.
 See L<AI::Prolog|AI::Prolog> for more information.  If you must know more,
 there are plenty of comments sprinkled through the code.
 
+=head1 BUGS
+
+A query using C<[HEAD|TAIL]> syntax does not bind properly with the C<TAIL>
+variable when returning a result object.  This bug can be found in the
+C<_to_data> method of this class.
+
+=head1 SEE ALSO
+
+W-Prolog:  L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>
+
+Michael BartE<225>k's online guide to programming Prolog:
+L<http://kti.ms.mff.cuni.cz/~bartak/prolog/index.html>
+
+=head1 AUTHOR
+
+Curtis "Ovid" Poe, E<lt>moc tod oohay ta eop_divo_sitrucE<gt>
+
+Reverse the name to email me.
+
+This work is based on W-Prolog, L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>,
+by Dr. Michael Winikoff.  Many thanks to Dr. Winikoff for granting me
+permission to port this.
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2005 by Curtis "Ovid" Poe
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

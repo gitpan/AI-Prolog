@@ -1,7 +1,8 @@
 #!/usr/bin/perl
-# '$Id: 50engine.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
+# '$Id: 50engine.t,v 1.2 2005/01/23 23:04:05 ovid Exp $';
 use warnings;
 use strict;
+#use Test::More tests => 16;
 use Test::More 'no_plan';
 use Test::MockModule;
 use Test::Differences;
@@ -85,3 +86,51 @@ is $engine->results,'append([a,b,c],[d],[a,b,c,d])',
     '... and it should let us issue a new query against the same db';
 ok ! $engine->results,
     '... and it should not return spurious results';
+
+# this will eventually test data structures
+
+can_ok $CLASS, 'formatted';
+
+$engine->formatted(0);
+$engine->query(Term->new('append(X,Y,[a,b,c,d])'));
+my $result = $engine->results;
+is_deeply $result->X, [], '... and the X result should be correct';
+is_deeply $result->Y, [qw/a b c d/], '... and the Y result should be correct';
+
+$result = $engine->results;
+is_deeply $result->X, [qw/a/], '... and the X result should be correct';
+is_deeply $result->Y, [qw/b c d/], '... and the Y result should be correct';
+
+$result = $engine->results;
+is_deeply $result->X, [qw/a b/], '... and the X result should be correct';
+is_deeply $result->Y, [qw/c d/], '... and the Y result should be correct';
+
+$result = $engine->results;
+is_deeply $result->X, [qw/a b c/], '... and the X result should be correct';
+is_deeply $result->Y, [qw/d/], '... and the Y result should be correct';
+
+$result = $engine->results;
+is_deeply $result->X, [qw/a b c d/], '... and the X result should be correct';
+is_deeply $result->Y, [], '... and the Y result should be correct';
+
+ok ! defined ($result = $engine->results),
+    '... and results() should return undef when there are no more results';
+
+can_ok $CLASS, 'raw_results';
+$CLASS->raw_results(1);
+$CLASS->formatted(0);
+$engine->query(Term->new('append(X,Y,[a,b,c,d])'));
+is_deeply $engine->results, ['append', [], [qw/a b c d/], [qw/a b c d/]],
+    '... and subsequent results should match expectations';
+is_deeply $engine->results, ['append', [qw/a/], [qw/b c d/], [qw/a b c d/]],
+    '... and subsequent results should match expectations';
+is_deeply $engine->results, ['append', [qw/a b/], [qw/c d/], [qw/a b c d/]],
+    '... and subsequent results should match expectations';
+is_deeply $engine->results, ['append', [qw/a b c/], [qw/d/], [qw/a b c d/]],
+    '... and subsequent results should match expectations';
+is_deeply $engine->results, ['append', [qw/a b c d/], [], [qw/a b c d/]],
+    '... and subsequent results should match expectations';
+ok ! defined $engine->results,
+    '... and it should return undef when there are no more results'
+
+

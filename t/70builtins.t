@@ -1,9 +1,9 @@
 #!/usr/bin/perl
-# '$Id: 60aiprolog.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
+# '$Id: 70builtins.t,v 1.2 2005/01/29 16:44:47 ovid Exp $';
 use warnings;
 use strict;
-#use Test::More tests => 3;
-use Test::More qw/no_plan/;
+use Test::More tests => 21;
+#use Test::More qw/no_plan/;
 use Test::MockModule;
 use Clone qw/clone/;
 use Test::Differences;
@@ -27,6 +27,8 @@ q(X) :- call(steals(badguy,X)).
 valuable(gold).
 valuable(rubies).
 END_PROLOG
+
+Engine->formatted(1);
 
 my $query = Term->new("p(ovid).");
 my $engine = Engine->new($query,$database);
@@ -106,8 +108,14 @@ $query = Term->new("or(thief(kudra),thief(ovid)).");
 $engine->query($query);
 ok ! $engine->results, '... but it should fail if none of its goals can succeed';
 
-#@stdout = ();
-#$query = Term->new("print(badguy).");
-#$engine->query($query);
-#is_deeply \@stdout, ["ovid"],
-#    'printing should print what we tell it to';
+@stdout = ();
+$query  = Term->new("print(badguy).");
+$engine->query($query);
+$engine->results;
+is_deeply \@stdout, ["badguy"], "print/1 should print what we give it.";
+
+@stdout = ();
+$query  = Term->new("if(steals(ovid,X),print(X),print(false)).");
+$engine->query($query);
+$engine->results;
+is_deeply \@stdout, ["nothing"], '... even if it is printing a variable';

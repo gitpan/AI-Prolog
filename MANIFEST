@@ -1,12 +1,15 @@
 Changes
 examples/append.pl
 examples/benchmark.pl
+examples/data_structures.pl
 examples/if_else.pl
 examples/monkey.pl
 examples/trace.pl
 lib/AI/Prolog.pm
+lib/AI/Prolog/Builtins.pm
 lib/AI/Prolog/ChoicePoint.pm
 lib/AI/Prolog/Engine.pm
+lib/AI/Prolog/Introduction.pm
 lib/AI/Prolog/Parser.pm
 lib/AI/Prolog/Term.pm
 lib/AI/Prolog/TermList.pm

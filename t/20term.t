@@ -2,7 +2,7 @@
 # '$Id: 20term.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 56;
+use Test::More tests => 83;
 #use Test::More 'no_plan';
 
 my $CLASS;
@@ -15,7 +15,7 @@ BEGIN
 }
 
 # I hate the fact that they're interdependent.  That brings a 
-# chickin and egg problem to squashing bugs.
+# chicken and egg problem to squashing bugs.
 use aliased 'AI::Prolog::Parser';
 
 can_ok $CLASS, 'occurcheck';
@@ -106,9 +106,47 @@ ok ! defined $term->varid, '... and it should not have an id';
 ok ! $term->deref, '... it is bound, but it should not be a reference';
 ok ! defined $term->ref, '... which means it should not reference anything';
 is $term->to_string, 'stuph(_0)',
-    '... bound term with one arg should show the functor and the arg varid';
+    '... bound term with one arg should show the functor and the arg';
 
+$parsed = Parser->new('stuph(notvar, varnot)');
+ok $term = $CLASS->new($parsed),
+    'We should be able to create a new term from a parser object';
+is $term->functor, 'stuph', '... and the functor should match the parser functor';
+is $term->arity, 2, '... and the arity should match the parser arity';
+is @{$term->args}, 2, '... and it should have 1 arg';
+is $term->bound, 1, '... but it should be bound to a value!';
+ok ! defined $term->varid, '... and it should not have an id';
+ok ! $term->deref, '... it is bound, but it should not be a reference';
+ok ! defined $term->ref, '... which means it should not reference anything';
+is $term->to_string, 'stuph(notvar,varnot)',
+    '... bound term with two args should show the functor and the args';
+
+$parsed = Parser->new('stuph("not var")');
+ok $term = $CLASS->new($parsed),
+    'We should be able to create a new term from a parser object and handle quotes';
+is $term->functor, 'stuph', '... and the functor should match the parser functor';
+is $term->arity, 1, '... and the arity should match the parser arity';
+is @{$term->args}, 1, '... and it should have 1 arg';
+is $term->bound, 1, '... but it should be bound to a value!';
+ok ! defined $term->varid, '... and it should not have an id';
+ok ! $term->deref, '... it is bound, but it should not be a reference';
+ok ! defined $term->ref, '... which means it should not reference anything';
+is $term->to_string, 'stuph(not var)',
+    '... bound term with one arg should show the functor and the arg';
+
+$parsed = Parser->new(q{stuph('some string o stuff', "not var")});
+ok $term = $CLASS->new($parsed),
+    'We should be able to create a new term from a parser object and handle quotes';
+is $term->functor, 'stuph', '... and the functor should match the parser functor';
+is $term->arity, 2, '... and the arity should match the parser arity';
+is @{$term->args}, 2, '... and it should have 1 arg';
+is $term->bound, 1, '... but it should be bound to a value!';
+ok ! defined $term->varid, '... and it should not have an id';
+ok ! $term->deref, '... it is bound, but it should not be a reference';
+ok ! defined $term->ref, '... which means it should not reference anything';
+is $term->to_string, 'stuph(some string o stuff,not var)',
+    '... bound term with two args should show the functor and the args';
 can_ok $term, 'refresh';
 #diag $term->to_string;
-$term2 = $term->refresh([undef, $term]);
+#$term2 = $term->refresh([undef, $term]);
 #diag $term2->to_string;

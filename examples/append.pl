@@ -15,6 +15,7 @@ END_PROLOG
 my $parser = Parser->new("append([a],[b,c,d],Z).");
 my $query  = Term->new($parser);
 my $engine = Engine->new($query,$database);
+$engine->formatted(1);
 
 print "Appending two lists 'append([a],[b,c,d],Z).'";
 while (my $result = $engine->results) {

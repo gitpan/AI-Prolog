@@ -19,6 +19,7 @@ use aliased 'AI::Prolog::Engine';
 my $parser = Parser->new("append(X,Y,[a,b,c,d]).");
 my $query  = Term->new($parser);
 my $engine = Engine->new($query,Parser->consult(append_prog()));
+$engine->formatted(1);
 
 is $engine->results,  'append([],[a,b,c,d],[a,b,c,d])', 'Running the engine should work';
 is $engine->results, 'append([a],[b,c,d],[a,b,c,d])', '... as should fetching more results';

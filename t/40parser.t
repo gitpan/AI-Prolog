@@ -2,8 +2,8 @@
 # '$Id: 40parser.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 56;
-#use Test::More 'no_plan';
+#use Test::More tests => 56;
+use Test::More 'no_plan';
 use Test::MockModule;
 
 my $CLASS;
@@ -139,3 +139,34 @@ is $tls->to_string, '[owns(merlyn,gold)(0 clauses)]',
 $tls = $db->{$keys[1]};
 is $tls->to_string, '[owns(ovid,rubies)(0 clauses)]',
     '... and the termlist should show the correct term(s)';
+
+$parser = $CLASS->new(<<'END_PROLOG');
+owns("some person", gold).
+owns(ovid, 'heap o\'junk').
+END_PROLOG
+$parser->getname; # owns
+$parser->advance; # skip (
+is $parser->getname, 'some person', 'The parser should be able to handle quoted atoms';
+is $parser->current, ',',
+    '... and the current character should be the first one after the final quote';
+is $parser->_start, 5, '... and have the parser should start at the first quote';
+is $parser->_posn, 18, 
+    '... and have the posn point to the first char after the last quote';
+$parser->advance; # skip ,
+$parser->skipspace;
+$parser->getname;
+$parser->advance; # skip )
+$parser->advance; # skip .
+$parser->skipspace;
+$parser->getname; # owns
+$parser->advance; # skip (
+$parser->getname; # owns
+$parser->advance; # skip ,
+$parser->skipspace;
+# not sure of the best way to handle this
+is $parser->getname, 'heap o\\\'junk', 'The parser should be able to handle single quoted atoms with escape';
+is $parser->current, ')',
+    '... and the current character should be the first one after the final quote';
+is $parser->_start, 38, '... and have the parser should start at the first quote';
+is $parser->_posn, 52, 
+    '... and have the posn point to the first char after the last quote';

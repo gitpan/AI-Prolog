@@ -1,11 +1,13 @@
 package AI::Prolog::Parser;
+$REVISION = '$Id: Parser.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 use strict;
 use warnings;
 
 # debugging stuff
 use Clone;
+use Text::Balanced qw/extract_quotelike extract_delimited/;
 
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::TermList';
@@ -58,8 +60,8 @@ sub to_string {
         . " }";
 }
 
-sub _posn   {shift->{_posn}   }
-sub _str    {shift->{_str}    }
+sub _posn    {shift->{_posn}   }
+sub _str     {shift->{_str}    }
 sub _start   {shift->{_start}  }
 sub _varnum  {shift->{_varnum} }
 sub _vardict {shift->{_vardict}}
@@ -93,14 +95,22 @@ sub getname {
     my $self = shift;
 
     $self->{_start} = $self->{_posn};
-    $self->{_posn}++;
-    my $length = 0;
-    $self->{_posn}++, $length++ while $self->current =~ /^[[:alnum:]]/;
-    
-    my $getname   = substr $self->{_str} => $self->{_start}, $length + 1;
-    $self->{_posn} = length $self->{_str}
-        if $self->{_posn} > length $self->{_str};
-
+    my $getname;
+    if ($self->current =~ /['"]/) {
+        my $string = substr $self->{_str} => $self->{_start};
+        $getname   = extract_delimited($string);
+        $self->{_posn} += length $getname;
+        return substr $getname => 1, length($getname) - 2; # strip the quotes
+    }
+    else {
+        $self->{_posn}++;
+        my $length = 0;
+        $self->{_posn}++, $length++ while $self->current =~ /^[[:alnum:]]/;
+        
+        $getname   = substr $self->{_str} => $self->{_start}, $length + 1;
+        $self->{_posn} = length $self->{_str}
+            if $self->{_posn} > length $self->{_str};
+    }
     return $getname;
 }
 
@@ -131,7 +141,7 @@ sub getvar {
         $term = Term->new($self->{_varnum}++); # XXX wrong _varnum?
         $self->{_vardict}{$string} = $term;
     }
-    return $term;
+    return ($term, $string);
 }
 
 # handle errors in one place
@@ -238,5 +248,33 @@ AI::Prolog::Parser - A simple Prolog parser.
 
 =head1 DESCRIPTION
 
-See L<AI::Prolog|AI::Prolog> for more information.  If you must know more,
-there are plenty of comments sprinkled through the code.
+There are no user-serviceable parts inside here.  See L<AI::Prolog|AI::Prolog>
+for more information.  If you must know more, there are a few comments
+sprinkled through the code.
+
+=head1 SEE ALSO
+
+W-Prolog:  L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>
+
+Michael BartE<225>k's online guide to programming Prolog:
+L<http://kti.ms.mff.cuni.cz/~bartak/prolog/index.html>
+
+=head1 AUTHOR
+
+Curtis "Ovid" Poe, E<lt>moc tod oohay ta eop_divo_sitrucE<gt>
+
+Reverse the name to email me.
+
+This work is based on W-Prolog, L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>,
+by Dr. Michael Winikoff.  Many thanks to Dr. Winikoff for granting me
+permission to port this.
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2005 by Curtis "Ovid" Poe
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut
+
