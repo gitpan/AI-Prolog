@@ -1,18 +1,28 @@
 Changes
+data/spider.pro
+bin/aiprolog
 examples/append.pl
 examples/benchmark.pl
+examples/cut.pl
 examples/data_structures.pl
 examples/if_else.pl
 examples/monkey.pl
+examples/path.pl
 examples/trace.pl
 lib/AI/Prolog.pm
-lib/AI/Prolog/Builtins.pm
+lib/AI/Prolog/Builtins.pod
 lib/AI/Prolog/ChoicePoint.pm
 lib/AI/Prolog/Engine.pm
-lib/AI/Prolog/Introduction.pm
+lib/AI/Prolog/Introduction.pod
+lib/AI/Prolog/KnowledgeBase.pm
 lib/AI/Prolog/Parser.pm
 lib/AI/Prolog/Term.pm
+lib/AI/Prolog/Term/Cut.pm
+lib/AI/Prolog/Term/Number.pm
 lib/AI/Prolog/TermList.pm
+lib/AI/Prolog/TermList/Clause.pm
+lib/AI/Prolog/TermList/Primitive.pm
+lib/AI/Prolog/TermList/Step.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml			Module meta-data (added by MakeMaker)

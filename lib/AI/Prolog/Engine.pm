@@ -1,13 +1,17 @@
 package AI::Prolog::Engine;
-$REVISION = '$Id: Engine.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
-$VERSION = '0.02';
+$REVISION = '$Id: Engine.pm,v 1.4 2005/02/13 21:01:02 ovid Exp $';
+$VERSION = '0.1';
 use strict;
 use warnings;
 
 use Clone qw/clone/;
 
 use aliased 'AI::Prolog::Term';
+use aliased 'AI::Prolog::Term::Cut';
 use aliased 'AI::Prolog::TermList';
+use aliased 'AI::Prolog::TermList::Step';
+use aliased 'AI::Prolog::TermList::Primitive';
+use aliased 'AI::Prolog::KnowledgeBase';
 use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::ChoicePoint';
 
@@ -56,47 +60,60 @@ sub raw_results {
 
 sub new {
     my ($class, $term, $prog) = @_;
-    Term->internalparse(1); # enable underscore as first character of term
     my $self = bless {
         # The stack holds choicepoints and a list of variables
         # which need to be un-bound upon backtracking.
-	    _stack     => [],
+	    _stack         => [],
         # We use a hash to store the program
-        _db        => {}, 
-        _goal      => TermList->new($term,undef), # TermList
-	    _call      => $term, # Term
+        _db            => KnowledgeBase->new, 
+        _goal          => TermList->new($term,undef), # TermList
+	    _call          => $term, # Term
         # Used to time how long queries take
-    	time      => undef,
+    	time           => undef,
         # A bookmark to the fail predicate
-	    _failgoal  => undef, # TermList
-        _run_called => undef,
+	    _failgoal      => undef, # TermList
+        _run_called    => undef,
+        _cp            => undef,
+        _retractClause => undef,
     } => $class;
 
     eval {
         $self->{_db} = Parser->consult(<<'        END_PROG', $prog);
             eq(X,X).
             fail :- eq(c,d). 
-            print(X) :- _print(X).
             if(X,Y,Z) :- once(wprologtest(X,R)) , wprologcase(R,Y,Z).
             wprologtest(X,yes) :- call(X). wprologtest(X,no). 
             wprologcase(yes,X,Y) :- call(X). 
             wprologcase(no,X,Y) :- call(Y).
-            not(X) :- if(X,fail,true). 
+            not(X)  :- if(X,fail,true). 
             or(X,Y) :- call(X).
             or(X,Y) :- call(Y).
             true. 
-            call(X) :- _call(X). 
-            nl :- _nl. 
-            once(X) :- _onceenter , call(X) , _onceleave.
+            % the following are handled internally.  Don't use the
+            % := operator.
+            !          :=  1.
+            call(X)    :=  2. 
+            assert(X ) :=  5.
+            retract(X) :=  7.
+            print(X)   := 10.
+            nl         := 12. 
+            % commented out while we're still figuring out
+            % what's wrong.
+            % seq(X)   := 30.
+            % if(X, Yes, R ) :- seq(X), !, seq(Yes).
+            % if(X, R  , No) :- seq(No).
+            % if(X, Yes) :- seq(X), !, seq(Yes).
+            % if(X, R  ).
+            once(X)  :- call(X), !.
         END_PROG
-        Parser->resolve($self->{_db});
     };
     if ($@) {
         require Carp;
         Carp::croak("Engine->new failed.  Cannot parse default program: $@");
     }
-    Term->internalparse(0);
+    $self->{_retractClause} = $self->{_db}->get("retract/1");
     $self->{_goal}->resolve($self->{_db});
+    # XXX Can these go soon?
     $self->{_failgoal} = TermList->new(Term->new("fail",0), undef);
     $self->{_failgoal}->resolve($self->{_db});
     return $self;
@@ -108,7 +125,6 @@ sub query {
     $self->{_run_called} = undef;
     $self->{_goal}       = TermList->new($query, undef);
     $self->{_call}       = $query;
-    Term->internalparse(0);
     $self->{_goal}->resolve($self->{_db});
     $self->{_failgoal}   = TermList->new(Term->new("fail",0), undef);
     $self->{_failgoal}->resolve($self->{_db});
@@ -121,10 +137,14 @@ sub _goal     { shift->{_goal}     }
 sub _call     { shift->{_call}     }
 sub _failgoal { shift->{_failgoal} }
 
-sub _dump {
-    my ($self, $clausenum) = @_;
-    if ($self->trace) {
-        warn "Goal: " . $self->{_goal}->to_string . " clausenum = $clausenum\n";
+sub dumpGoal {
+    my ($self) = @_;
+    if ($self->{_goal}) {
+        print "\n= Goals: " . $self->{_goal}->to_string 
+            . "\n==> Try:  " .$self->{_goal}->nextClause->to_string."\n";
+    }
+    else {
+        print "\n= Goals: null\n";
     }
 }
 
@@ -134,31 +154,37 @@ sub _dump {
 sub results {
     my $self = shift;
     if ($self->{_run_called}) {
+        # XXX we should probably just backtrack instead.
         $self->{_goal} = TermList->new(Term->new("fail",0), $self->{_goal});
         $self->{_goal}->resolve($self->{_db});
+    }
+    else {
         $self->{_run_called} = 1;
     }
-    _run($self);
+    $self->_run;
 }
 
-# this does the actual work
 sub _run {
-    my ($self) = @_;
-    $self->{_run_called} = 1;
-    my $found; # boolean
-    my $func;  # string
-    my ($arity, $clausenum); # ints
-    my ($clause, $nextclause, $ts1, $ts2); # TermLists
-    my ($t);   # Term
-    my $o;     # Object
-    my $cp;    # ChoicePoint
-    my $vars;  # Term[]
-
-    $clausenum = 1;
-
+    my ($self)   = @_;
+    my $stackTop = 0;
 
     while (1) {
-        unless ($self->{_goal}) {
+        $stackTop = @{$self->{_stack}};
+
+        if ($self->{_goal} && $self->{_goal}->isa(Step)) {
+            $self->{_goal} = $self->{_goal}->next;
+            if ($self->{_goal}) {
+                $self->{_goal}->lookupIn($self->{_db});
+            }
+            $self->{_step_flag} = 1;
+            $self->trace(1);
+        }
+        $self->dumpGoal if $TRACE;
+        $self->step if $self->{_step_flag};
+            
+        unless ($self->{_goal} && $self->{_goal}->nextClause) {
+            # XXX This is handled very differently in XProlog
+            # Damn.
             # we've succeeded.  return results
             if ($self->formatted) {
                 return $self->_call->to_string;
@@ -171,134 +197,212 @@ sub _run {
             }
         }
         
-        unless (defined $self->_goal && $self->{_goal}->term) {
+        unless ($self->_goal && $self->{_goal}->term) {
             require Carp;
             Carp::croak("Engine->run fatal error.  goal->term is null!");
         }
         my $func  = $self->{_goal}->term->getfunctor;
         my $arity = $self->{_goal}->term->getarity;
-        $self->_dump($clausenum);
 
-        # if the goal is not a system predicate
-        unless ('_' eq substr $func => 0, 1) {
-            # if there is an alternative clause, push choicepoint
-            if ($self->{_goal}->numclauses > $clausenum) {
-                push @{$self->{_stack}} => ChoicePoint->new($clausenum + 1, $self->_goal);
-            }
-            if ($clausenum > $self->{_goal}->numclauses) {
-                $clause = $self->_failgoal;
-                warn "$func/$arity undefined!";
-                $clause = TermList->new(Term->new("fail", 0), $self->_goal);
-                $clause->resolve($self->_db);
+        unless ($self->{_goal}->nextClause) {
+            warn "$func/$arity undefined!"; # this was wrapped in an "if trace"
+            unless ($self->backtrack) {
+                return;
             }
             else {
-                $clause = $self->_goal->{definer}[$clausenum];
+                next; # restart the while loop
             }
+        }
 
-            $clausenum = 1; # reset
-            # check unification
-            $vars = [];
-            if ($clause->term->refresh($vars)->unify($self->_goal->term, $self->{_stack})) {
-                $clause = $clause->next;
-
-                # refresh clause -- need to also copy definer
-                if ($clause) {
-                    $ts1 = TermList->new($clause->term->refresh($vars), undef, $clause);
-                    $ts2 = $ts1; # XXX should this be a clone?
+        my $clause = $self->{_goal}->nextClause;
+        if (my $nextClause = $clause->nextClause) {
+            push @{$self->{_stack}} => $self->{_cp} = ChoicePoint->new(
+                $self->{_goal},
+                $nextClause,
+            );
+        }
+        my $vars = [];
+        my $xxx  = $clause->term->refresh($vars);
+        if ($xxx->unify($self->{_goal}->term, $self->{_stack})) {
+            $clause = $clause->next;
+            if ($clause && $clause->isa(Primitive)) {
+                if (! $self->doPrimitive($self->{_goal}->term, $clause)
+                    && ! $self->backtrack) {
+                    return;
+                }
+            }
+            elsif (! $clause) { # matching against fact
+                $self->{_goal} = $self->{_goal}->next;
+                if ($self->{_goal}) {
+                    $self->{_goal}->lookupIn($self->{_db});
+                }
+            }
+            else { # replace goal by clause body
+                my ($p, $p1, $ptail); # termlists
+                for (my $i = 1; $clause; $i++) {
+                    # will there only be one CUT?
+                    if ($clause->term eq Term->CUT) {
+                        $p = TermList->new(Cut->new($stackTop));
+                    }
+                    else {
+                        $p = TermList->new($clause->term->refresh($vars));
+                    }
+                    if ($i == 1) {
+                        $p1 = $ptail = $p;
+                    }
+                    else {
+                        $ptail->next($p);
+                        $ptail = $p; # XXX ?
+                    }
                     $clause = $clause->next;
-
-                    while ($clause) {
-                        $ts1->{next} = TermList->new($clause->term->refresh($vars), undef, $clause);
-                        $ts1 = $ts1->next;
-                        $clause = $clause->next;
-                    }
-
-                    # splice together refreshed clause and other goals
-                    $ts1->{next} = $self->{_goal}->next;
-                    $self->{_goal} = $ts2; # XXX again, I think maybe $ts2 should be cloaned
-
-                    # XXX for gc purposes, drop references to data that are not needed
-                    undef $t; undef $ts1; undef $ts2; $vars = [];
-                    undef $clause; undef $nextclause; undef $func;
                 }
-                else { # matching against fact
-                    $self->{_goal} = $self->_goal->next;
-                }
-            }
-            else { # unification failed.   Backtrack.
-                $self->{_goal} = $self->_goal->next;
-                $found = 0;
-                BACKTRACK: {
-                    while (@{$self->{_stack}}) {
-                        my $o = pop @{$self->{_stack}};
-
-                        if ($o->isa(Term)) {
-                            $t = $o;
-                            $t->unbind;
-                        }
-                        elsif ($o->isa(ChoicePoint)) {
-                            $cp = $o;
-                            $self->{_goal} = $cp->goal;
-                            $clausenum = $cp->clausenum;
-                            $found = 1;
-                            last BACKTRACK;
-                        } # elsif integer, iterative deepening
-                        # not implemented yet
-                    }
-                } # end BACKTRACK
-
-                # stack is empty.  We have not found a choice point.
-                # this means we have failed.
-
-                return unless $found;
+                $ptail->next($self->{_goal}->next);
+                $self->{_goal} = $p1;
+                $self->{_goal}->lookupIn($self->{_db});
             }
         }
-        # looks like it's a system predicate
-        elsif ('_print' eq $func && 1 == $arity) {
-            _print($self->{_goal}->term->getarg(0)->to_string);
-            $self->{_goal} = $self->{_goal}->next;
+        else { # unify failed.  Must backtrack
+            if (! $self->backtrack) {
+                return;
+            }
         }
-        elsif ('_nl' eq $func && ! $arity) {
-            _print("\n");
-            $self->{_goal} = $self->_goal->next;
-        }
-        elsif ('_call' eq $func && 1 == $arity) {
-            my $templist = TermList->new($self->_goal->term->getarg(0), undef);
-            $templist->resolve($self->{_db});
-            $templist->{next} = $self->_goal->next;
-            $self->{_goal} = $templist;
-        }
-        # the next two together implement once/1
-        elsif ('_onceenter' eq $func && ! $arity) {
-            push @{$self->{_stack}} => bless {} => 'OnceMark';
-            $self->{_goal} = $self->_goal->next;
-        }
-        elsif ('_onceleave' eq $func && ! $arity) {
-            # find mark, remove it, and all choicepoints above it
-            my @tempstack;
+    }
+}
+
+sub backtrack {
+    my $self = shift;
+    my $found;
+    if ($self->trace) {
+        print " <<== Backtrack: \n";
+    }
+    BACKTRACK: {
+        while (@{$self->{_stack}}) {
             my $o = pop @{$self->{_stack}};
-            while (! UNIVERSAL::isa($o, 'OnceMark')) {
-                # forget choicepoints
-                if (! $o->isa(ChoicePoint)) {
-                    push @tempstack => $o;
-                }
-                $o = pop @{$self->{_stack}};
-            }
 
-            while (@tempstack) {
-                push @{$self->{_stack}} => pop @tempstack;
+            if ($o->isa(Term)) {
+                $o->unbind;
             }
-            $self->{_goal} = $self->_goal->next;
+            elsif ($o->isa(ChoicePoint)) {
+                $self->{_goal} = $o->goal;
+                $self->{_goal}->nextClause($o->clause);
+                $found = 1;
+                last BACKTRACK;
+            } # elsif integer, iterative deepening
+            # not implemented yet
         }
-        else {
-            warn "Unknown builtin: $func/$arity";
-            $self->{_goal} = $self->_goal->next;
-        }
-    }       
+    } # end BACKTRACK
+    # stack is empty.  We have not found a choice point.
+    # this means we have failed.
+    return $found;
 }
 
 sub _print { # convenient testing hook
     print @_;
+}
+        
+sub removeChoices {
+    # this implements the cut operator
+    my ($self, $varid) = @_;
+    my @stack;
+    my $i = @{$self->{_stack}};
+    while ($i > $varid) {
+        my $o = pop @{$self->{_stack}};
+        unless ($o->isa(ChoicePoint)) {
+            push @stack => $o;
+        }
+        $i--;
+    }
+    while (@stack) {
+        push @{$self->{_stack}} => pop @stack;
+    }
+}
+
+sub _splice_goal_list {
+    my ($self, $term) = @_;
+    my ($t2, $p, $p1, $ptail);
+    my @vars;
+    my $i = 0;
+    $term = $term->getarg(0);
+    while ($term->getfunctor ne "null") {
+        $t2 = $term->getarg(0);
+        if ($t2 eq Term->CUT) {
+            $p = TermList->new(Cut->new( scalar @{$self->{_stack}}));
+        }
+        else {
+            $p = TermList->new( $t2 );
+        }
+        if ($i++ == 0) {
+            $p1 = $ptail = $p;
+        }
+        else {
+            $ptail->next($p);
+            $ptail = $p;
+        }
+        $term = $term->getarg(1);
+    }
+    $ptail->next($self->{_goal}->next);
+    $self->{_goal} = $p1;
+    $self->{_goal}->lookupIn($self->{_db});
+}
+
+use constant CONTINUE => 1;
+use constant RETURN   => 2;
+my @PRIMITIVES; # we'll fix this later
+
+$PRIMITIVES[1] = sub { # ! (cut)
+    my ($self, $term, $c) = @_;
+    $self->removeChoices( $term->varid );
+    CONTINUE;
+};
+
+$PRIMITIVES[2] = sub { 
+    my ($self, $term, $c) = @_;
+    $self->{_goal} = TermList->new($term->getarg(0), $self->{_goal}->next);
+    $self->{_goal}->resolve($self->{_db});
+    RETURN;
+}; # call(X)
+
+$PRIMITIVES[5] = sub { # assert(X)
+    my ($self, $term, $c) = @_;
+    $self->{_db}->assert($term->getarg(0));
+    CONTINUE;
+};
+
+$PRIMITIVES[7] = sub { # retract(X)
+    my ($self, $term, $c) = @_;
+    my $retract = $self->{_db}->retract($term->getarg(0), $self->{_stack});
+    unless ($retract) {
+        $self->backtrack;
+        return;
+    }
+    $self->{_cp}->clause($self->{_retractClause});
+    CONTINUE;
+};
+
+$PRIMITIVES[10] = sub { # print()
+    my ($self, $term, $c) = @_;
+    _print($term->getarg(0)->to_string);
+    CONTINUE;
+};
+$PRIMITIVES[12] = sub { _print("\n"); CONTINUE }; # nl
+
+$PRIMITIVES[30] = sub { # seq(X)
+    my ($self, $term, $c) = @_;
+    $self->_splice_goal_list( $term );
+    CONTINUE;
+};
+
+sub doPrimitive { # returns false if fails
+    my ($self, $term, $c) = @_;
+    my $primitive = $PRIMITIVES[ $c->ID ]
+        or die sprintf "Cannot find primitive for %s (ID: %d)\n", $term->to_string, $c->ID;
+    return unless my $result = $primitive->($self, $term, $c);
+    return 1 if RETURN == $result;
+    $self->{_goal} = $self->{_goal}->next;
+    if ($self->{_goal}) {
+        $self->{_goal}->lookupIn($self->{_db});
+    }
+    return 1; 
 }
 
 1;
@@ -318,7 +422,7 @@ AI::Prolog::Engine - Run queries against a Prolog database.
 
 =head1 DESCRIPTION
 
-C<AI::Prolog::Engine> is a Warren Abstract Machine (WAM) based Prolog engine.
+C<AI::Prolog::Engine> is a Prolog engine implemented in Perl.
 
 The C<new()> function actually bootstraps some Prolog code onto your program to
 give you access to the built in predicates listed in the

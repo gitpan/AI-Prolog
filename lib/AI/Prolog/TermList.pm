@@ -1,5 +1,5 @@
 package AI::Prolog::TermList;
-$REVISION = '$Id: TermList.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
+$REVISION = '$Id: TermList.pm,v 1.4 2005/02/13 21:01:02 ovid Exp $';
 
 $VERSION = 0.02;
 
@@ -8,79 +8,158 @@ use warnings;
 
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::Parser';
+use aliased 'AI::Prolog::TermList::Clause';
+use aliased 'AI::Prolog::TermList::Primitive';
 
 sub new {
-    my ($proto, $term_or_parser, $nexttermlist, $definertermlist) = @_;
+    #my ($proto, $parser, $nexttermlist, $definertermlist) = @_;
+    my $proto = shift;
     my $class = ref $proto || $proto; # yes, I know what I'm doing
-    return _new_from_clause($class, $term_or_parser)
-        if Parser eq ref $term_or_parser; # aargh! Lack of MMD sucks
-    my $self = {
-        term       => $term_or_parser,
-        next       => $nexttermlist,
-        definer    => [], # XXX
-        numclauses => 0,  # XXX
-    };
-    if ($definertermlist) {
-        $self->{definer}    = $definertermlist->definer;
-        $self->{numclauses} = $definertermlist->numclauses;
+    return _new_from_term($class, @_)          if 1 == @_ && $_[0]->isa(Term);
+    return _new_from_parser($class, @_)        if 1 == @_ && $_[0]->isa(Parser); # aargh! Lack of MMD sucks
+    return _new_from_term_and_next($class, @_) if 2 == @_;
+    return _new_with_definer($class, @_)       if 3 == @_;
+    if (@_) {
+        require Carp;
+        Carp::croak "Unknown arguments to TermList->new:  @_";
     }
-    bless $self => $class;
+    bless {
+        term       => undef,
+        next       => undef,
+        definer    => [], # XXX
+        nextClause => undef, # serves two purposes: either links clauses in database
+                             # or points to defining clause for goals
+    } => $class;
 }
 
-# used for parsing clauses
-sub _new_from_clause {
+sub _new_from_term {
+    my ($class, $term) = @_;
+    my $self = $class->new;
+    $self->{term} = $term;
+    return $self;
+}
+
+sub _new_from_parser {
     my ($class, $ps) = @_;
     my $self = $class->new;
-    my $i   = 0;
-    my $ts  = [];
-    my $tsl = [];
-    $ts->[$i++] = Term->new($ps);
+    my @ts   = Term->new($ps);
     $ps->skipspace;
 
     if ($ps->current eq ':') {
         $ps->advance;
 
-        if ($ps->current ne '-') {
-            $ps->parseerror("Expected '-' after ':'");
-        }
-        $ps->advance;
-        $ps->skipspace;
-
-        $ts->[$i++] = Term->new($ps);
-        $ps->skipspace;
-
-        while ($ps->current eq ',') {
+        if ($ps->current eq '=') {
+            # we're parsing a primitive
             $ps->advance;
             $ps->skipspace;
-            $ts->[$i++] = Term->new($ps);
+            my $id = $ps->getnum;
             $ps->skipspace;
+            $self->{term} = $ts[0];
+            $self->{next} = Primitive->new($id);
         }
-
-        $tsl->[$i] = undef;
-
-        for my $j (reverse 1 .. $i - 1) {
-            $tsl->[$j] = $self->new($ts->[$j], $tsl->[$j+1]);
+        elsif ($ps->current ne '-') {
+            $ps->parseerror("Expected '-' after ':'");
         }
+        else {
+            $ps->advance;
+            $ps->skipspace;
 
-        $self->{term} = $ts->[0];
-        $self->{next} = $tsl->[1];
+            push @ts => Term->new($ps);
+            $ps->skipspace;
+
+            while ($ps->current eq ',') {
+                $ps->advance;
+                $ps->skipspace;
+                push @ts => Term->new($ps);
+                $ps->skipspace;
+            }
+
+            my @tsl;
+            for my $j (reverse 1 .. $#ts) {
+                $tsl[$j] = $self->new($ts[$j], $tsl[$j+1]);
+            }
+
+            $self->{term} = $ts[0];
+            $self->{next} = $tsl[1];
+        }
     }
     else {
-        $self->{term} = $ts->[0];
+        $self->{term} = $ts[0];
         $self->{next} = undef;
     }
 
     if ($ps->current ne '.') {
-        $ps->parseerror("Expected '.'");
+        $ps->parseerror("Expected '.' Got '@{[$ps->current]}'");
     }
     $ps->advance;
     return $self;
 }
 
+sub _new_with_definer {
+    my ($class, $term, $next, $definer) = @_;
+    my $self = $class->new;
+    $self->{term}       = $term;
+    $self->{next}       = $next;
+    $self->{definer}    = $definer->definer;
+    return $self;
+}
+
+sub _new_from_term_and_next {
+    my ($class, $term, $next) = @_;
+    my $self = $class->_new_from_term($term);
+    $self->{next} = $next;
+    return $self;
+}
+
 sub term       { shift->{term}       }
-sub next       { shift->{next}       }
 sub definer    { shift->{definer}    }
-sub numclauses { shift->{numclauses} }
+
+sub next {
+    my $self = shift;
+    if (@_) {
+        $self->{next} = shift;
+        return $self;
+    }
+    return $self->{next};
+}
+
+sub nextClause {
+    my $self = shift;
+    if (@_) {
+        # XXX debug
+        my $nextClause = shift;
+        no warnings 'uninitialized';
+        if ($nextClause eq $self) {
+            require Carp;
+            Carp::confess("Trying to assign a termlist as its own successor");
+        }
+        $self->{nextClause} = $nextClause;
+        return $self;
+    }
+    return $self->{nextClause};
+}
+
+=for java
+
+    // XXX will we need this?
+    public String toString()
+    {
+        int i=0;
+        String s; TermList tl;
+        s = new String("[" + term.toString());
+        tl = next;
+        while (tl != null && ++i < 3) {
+            s = s + ", " + tl.term.toString();
+            tl = tl.next;
+        }
+        if(tl!=null) s += ",....";
+        s += "]";
+
+        return s ;
+    }
+
+
+=cut
 
 sub to_string {
     my $self = shift;
@@ -90,32 +169,58 @@ sub to_string {
         $to_string .= ", " . $tl->term->to_string;
         $tl = $tl->next;
     }
-    # this is commented out because I still wanted to see an
-    # entry for 0 clauses
-    #if (@{$self->definer}) {
-        $to_string .= "($self->{numclauses} clauses)";
-    #}
     return "$to_string]";
 }
 
-sub resolve {
-    my ($self, $db) = @_;
-    unless (@{$self->definer}) {
-        $self->{numclauses} = 0;
-        $self->{numclauses}++ 
-            while exists $db->{$self->{term}->getfunctor."/".$self->{term}->getarity."-".(1 + $self->{numclauses})};
+=for java
 
-        $self->{definer} = [];
-
-        for my $i (1 .. $self->{numclauses}) { # start numbering at one?
-            $self->{definer}[$i] = $db->{$self->{term}->getfunctor."/".$self->term->getarity."-$i"};
-        }
-
-        if ($self->next) {
-            $self->next->resolve($db);
-        }
+   public void resolve(KnowledgeBase db)
+    {
+        nextClause = (Clause) db.get( term.getfunctor()
+                                      + "/" + term.getarity() );
     }
+    public void lookupIn(KnowledgeBase db)
+    {
+        nextClause = (Clause) db.get( term.getfunctor()
+                                      + "/" + term.getarity() );
+    }
+
+=cut
+
+sub resolve {
+    my ($self, $kb) = @_;
+    my $key = sprintf "%s/%s" =>
+        $self->{term}->getfunctor,
+        $self->{term}->getarity;
+    $self->nextClause($kb->get($key));
 }
+
+sub lookupIn {
+    my ($self, $kb) = @_;
+    my $key = sprintf "%s/%s" =>
+        $self->{term}->getfunctor,
+        $self->{term}->getarity;
+    $self->nextClause($kb->get($key));
+}
+
+#sub resolve {
+#    my ($self, $db) = @_;
+#    unless (@{$self->definer}) {
+#        $self->{numclauses} = 0;
+#        $self->{numclauses}++ 
+#            while exists $db->{$self->{term}->getfunctor."/".$self->{term}->getarity."-".(1 + $self->{numclauses})};
+#
+#        $self->{definer} = [];
+#
+#        for my $i (1 .. $self->{numclauses}) { # start numbering at one?
+#            $self->{definer}[$i] = $db->{$self->{term}->getfunctor."/".$self->term->getarity."-$i"};
+#        }
+#
+#        if ($self->next) {
+#            $self->next->resolve($db);
+#        }
+#    }
+#}
 
 1;
 

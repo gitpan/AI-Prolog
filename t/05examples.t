@@ -11,6 +11,8 @@ BEGIN
     unshift @INC => '../lib';
 }
 
+use Carp;
+$SIG{__DIE__} = \&Carp::confess;
 use lib '../lib/';
 use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::Term';

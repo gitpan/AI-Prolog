@@ -1,6 +1,6 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
-$VERSION  = '0.04';
+$REVISION = '$Id: Prolog.pm,v 1.6 2005/02/13 21:01:02 ovid Exp $';
+$VERSION  = '0.5';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -20,6 +20,13 @@ sub new {
         _engine    => undef,
     } => $class;
     return $self;
+}
+
+sub do {
+    my ($self, $query) = @_;
+    $self->query($query);
+    1 while $self->results;
+    $self;
 }
 
 sub query {
@@ -63,6 +70,7 @@ sub raw_results {
 }
 
 1;
+
 __END__
 
 =head1 NAME
@@ -97,6 +105,13 @@ AI::Prolog - Perl extension for logic programming.
 In Perl, we traditionally tell the language how to find a solution.  In logic
 programming, we describe what a solution would look like and let the language
 find it for us.
+
+=head1 QUICKSTART
+
+For those who like to just dive right in, this distribution contains a simple
+Prolog shell called C<aiprolog> and a short adventure game called C<spider.pro>.
+
+See the C<bin/> and C<data/> directories in the distribution.
 
 =head1 DESCRIPTION
 
@@ -226,6 +241,22 @@ value.
 
 =head1 INSTANCE METHODS
 
+=head2 C<do($query_string)>
+
+This method is useful when you wish to combine the C<query()> and C<results()>
+methods but don't care about the results returned.  Most often used with the
+C<assert(X)> and C<retract(X)> predicates.
+
+ $prolog->do('assert(loves(ovid,perl))');
+
+This is a shorthand for:
+
+ $prolog->query('assert(loves(ovid,perl))');
+ 1 while $prolog->results;
+
+This is important because the C<query()> method merely builds the query.  Not
+until the C<results()> method is called is the command actually executed.
+
 =head2 C<query($query_string)>
 
 After instantiating an C<AI::Prolog> object, use this method to query it.
@@ -293,9 +324,15 @@ package names instead:
 
 =head1 SEE ALSO
 
+L<AI::Prolog::Introduction>
+
+L<AI::Prolog::Builtins>
+
 W-Prolog:  L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>
 
-Michael BartE<225>k's online guide to programming Prolog:
+X-Prolog:  L<http://www.iro.umontreal.ca/~vaucher/XProlog/>
+
+Roman BartE<225>k's online guide to programming Prolog:
 L<http://kti.ms.mff.cuni.cz/~bartak/prolog/index.html>
 
 =head1 AUTHOR
@@ -307,6 +344,9 @@ Reverse the name to email me.
 This work is based on W-Prolog, L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>,
 by Dr. Michael Winikoff.  Many thanks to Dr. Winikoff for granting me
 permission to port this.
+
+Many features also borrowed from X-Prolog L<http://www.iro.umontreal.ca/~vaucher/XProlog/>
+with Dr. Jean Vaucher's permission.
 
 =head1 COPYRIGHT AND LICENSE
 

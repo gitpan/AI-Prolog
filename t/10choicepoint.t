@@ -1,8 +1,8 @@
 #!/usr/bin/perl
-# '$Id: 10choicepoint.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
+# '$Id: 10choicepoint.t,v 1.2 2005/02/13 21:01:02 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 9;
+use Test::More tests => 11;
 
 my $CLASS;
 BEGIN
@@ -18,16 +18,23 @@ my $to_string_called = 0;
     package Goal;
     sub new       { bless {}=> shift }
     sub to_string { $to_string_called++; "some goal" }
+
+    package Clause;
+    sub new       { bless {}=> shift }
+    sub to_string { $to_string_called++; "some clause" }
 }
 
 can_ok $CLASS, 'new';
-ok my $cpoint = $CLASS->new(3, Goal->new), '... and calling it should succeed';
+ok my $cpoint = $CLASS->new(Goal->new, Clause->new), '... and calling it should succeed';
 isa_ok $cpoint, $CLASS, '... and the object it returns';
 
-can_ok $cpoint, 'clausenum';
-is $cpoint->clausenum, 3, '... and it should return the clausenum it was supplied';
+can_ok $cpoint, 'goal';
+isa_ok $cpoint->goal, 'Goal', '... and the object it returns';
+
+can_ok $cpoint, 'clause';
+isa_ok $cpoint->clause, 'Clause', '... and the object it returns';
 
 can_ok $cpoint, 'to_string';
-is $cpoint->to_string, '<< 3 : some goal>>',
+is $cpoint->to_string, '  ||some clause||   ',
     '... and it should return the right value';
 ok $to_string_called, "... and call the goal's to_string method";

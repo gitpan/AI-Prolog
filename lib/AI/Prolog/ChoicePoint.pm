@@ -1,24 +1,24 @@
 package AI::Prolog::ChoicePoint;
-$REVISION = '$Id: ChoicePoint.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
+$REVISION = '$Id: ChoicePoint.pm,v 1.4 2005/02/13 21:01:02 ovid Exp $';
 
 $VERSION = '0.02';
 use strict;
 use warnings;
 
-use constant CP_CLAUSENUM => 0;
-use constant CP_GOAL      => 1;
-
 sub new {
-    my ($class, $clausenum, $goal) = @_;
-    return bless [$clausenum,$goal] => $class;
+    my ($class, $goal, $clause) = @_;
+    return bless {
+        goal   => $goal,
+        clause => $clause,
+    } => $class;
 }
 
-sub clausenum { $_[0]->[CP_CLAUSENUM] }
-sub goal      { $_[0]->[CP_GOAL] }
+sub goal   { $_[0]->{goal}   }
+sub clause { $_[0]->{clause} }
 
 sub to_string {
     my $self = shift;
-    return "<< $self->[0] : " . $self->[1]->to_string . ">>";
+    return "  ||" . $self->clause->to_string . "||   ";
 }
 
 1;

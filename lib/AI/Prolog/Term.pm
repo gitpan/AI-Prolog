@@ -1,11 +1,13 @@
 package AI::Prolog::Term;
-$REVISION = '$Id: Term.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
+$REVISION = '$Id: Term.pm,v 1.3 2005/02/13 21:01:02 ovid Exp $';
 
 $VERSION = '0.03';
 use strict;
 use warnings;
 
+use aliased 'AI::Prolog::Term::Cut';
 use aliased 'AI::Prolog::Parser';
+
 use aliased 'Hash::AsObject';
 
 use constant NULL => 'null';
@@ -35,16 +37,15 @@ sub occurcheck {
 
 sub prettyprint { 1 }
 
-# controls whether predicates can beging with an underscore.
-# Beginning a system with an underscore makes it inaccessible
-# to the user.
-
-my $INTERNALPARSE = 0;
-sub internalparse { 
-    my ($class, $value) = @_;
-    $INTERNALPARSE = $value if defined $value;
-    return $INTERNALPARSE;
-}
+my $CUT = Cut->new(0);
+sub CUT {
+    my $class = shift;
+    if ($@) {
+        $CUT = shift;
+        return $class;
+    }
+    return $CUT;
+}   
 
 sub new {
     my $proto = shift;
@@ -56,7 +57,13 @@ sub new {
         return $class->_new_from_string($arg) if ! CORE::ref $arg;
         return $class->_new_from_parser($arg) if   CORE::ref $arg && $arg->isa(Parser);
     }
-    return $class->_new_with_functor_and_arity(@_) if 2 == @_;
+    elsif (2 == @_) {
+        return $class->_new_from_functor_and_array(@_) if 'ARRAY' eq CORE::ref $_[1];
+        return $class->_new_from_functor_and_arity(@_);
+    }
+    elsif(3 == @_) {
+        return $class->_new_binop(@_);
+    }
     require Carp;
     Carp::croak("Unknown arguments to Term->new");
 }
@@ -97,7 +104,22 @@ sub _new_with_id {
     } => $class;
 }
 
-sub _new_with_functor_and_arity {
+sub _new_from_functor_and_array {
+    my ($class, $functor, $arrayref) = @_;
+    bless {
+        functor => $functor,
+        arity   => scalar @$arrayref,
+        args    => $arrayref,
+        # if bound is false, $self is a reference to a free variable
+        bound   => 1,
+        varid   => undef, # XXX ??
+        # if bound and deref are both true, $self is a reference to a ref
+        deref   => 0,
+        ref     => undef,
+    } => $class;
+}
+
+sub _new_from_functor_and_arity {
     my ($class, $functor, $arity) = @_;
     bless {
         functor => $functor,
@@ -112,20 +134,64 @@ sub _new_with_functor_and_arity {
     } => $class;
 }
 
+sub _new_binop {
+    my ($class, $functor, $term1, $term2) = @_;
+    bless {
+        functor => $functor,
+        arity   => 2,
+        args    => [$term1, $term2],
+        # if bound is false, $self is a reference to a free variable
+        bound   => 1,
+        varid   => undef, # XXX ??
+        # if bound and deref are both true, $self is a reference to a ref
+        deref   => 0,
+        ref     => undef,
+    } => $class;
+}
+
 sub varnum  { $VARNUM          } # class method
 sub functor { shift->{functor} }
 sub arity   { shift->{arity}   }
 sub args    { shift->{args}    }
-sub bound   { shift->{bound}   }
 sub varid   { shift->{varid}   }
-sub deref   { shift->{deref}   }
 sub ref     { shift->{ref}     }
 
-# bind a variable to a term
+sub deref {
+    my $self = shift; # of course, this also begs the question of whether
+                      # the java code treated this as an alias or a copy :(
+    while ($self->{bound} && $self->{deref}) {
+        $self = $self->{ref};
+    }
+    return $self;
+}
+
+sub bound {
+    my $self = shift;
+    while ($self->{bound} && $self->{deref}) {
+        $self = $self->{ref};
+    }
+    return $self->{bound};
+}
+
+sub isBound { shift->bound }
+
+sub traceln {
+    my ($self, $msg) = @_;
+    if ($self->{trace}) {
+        print "$msg\n";
+    }
+}
+
+sub dup {
+    my $self = shift;
+    $self->new($self->{functor},$self->{arity});
+}
+
+# biind a variable to a term
 sub bind {
     my ($self, $term) = @_;
     return if $self eq $term;
-    unless ($self->bound) {
+    unless ($self->{bound}) {
         $self->{bound} = 1;
         $self->{deref} = 1;
         $self->{ref}   = $term;
@@ -151,7 +217,7 @@ sub unbind {
 # parser is much simpler
 sub setarg {
     my ($self, $pos, $val) = @_;
-    if ($self->bound && ! $self->deref) {
+    if ($self->{bound} && ! $self->{deref}) {
         $self->{args}[$pos] = $val;
     }
     else {
@@ -165,7 +231,7 @@ sub getarg {
     my ($self, $pos) = @_;
     # should check if position is valid
     if ($self->{bound}) {
-        return $self->ref->getarg($pos) if $self->deref;
+        return $self->ref->getarg($pos) if $self->{deref};
         return $self->{args}[$pos];
     }
     else {
@@ -176,15 +242,15 @@ sub getarg {
 
 sub getfunctor {
     my $self = shift;
-    return "" unless $self->bound;
-    return $self->ref->getfunctor if $self->deref;
+    return "" unless $self->{bound};
+    return $self->ref->getfunctor if $self->{deref};
     return $self->functor;
 }
 
 sub getarity {
     my $self = shift;
-    return 0 unless $self->bound;
-    return $self->ref->getarity if $self->deref;
+    return 0 unless $self->{bound};
+    return $self->ref->getarity if $self->{deref};
     return $self->arity;
 }
 
@@ -199,8 +265,8 @@ sub occurs {
 
 sub occurs1 {
     my ($self, $var) = @_;
-    if ($self->bound) {
-        return $self->ref->occurs1($var) if $self->deref;
+    if ($self->{bound}) {
+        return $self->ref->occurs1($var) if $self->{deref};
         for my $i (0 .. $self->arity - 1) {
             return 1 if $self->{args}[$i]->occurs1($var);
         }
@@ -216,9 +282,9 @@ sub occurs1 {
 
 sub unify {
     my ($self, $term, $stack) = @_;
-    return $self->ref->unify($term, $stack) if $self->bound and $self->deref;
-    return $self->unify($term->ref, $stack) if $term->bound and $term->deref;
-    if ($self->bound and $term->bound) { # bound and not deref
+    return $self->ref->unify($term, $stack) if $self->{bound} and $self->{deref};
+    return $self->unify($term->ref, $stack) if $term->{bound} and $term->{deref};
+    if ($self->{bound} and $term->{bound}) { # bound and not deref
         if ($self->functor eq $term->getfunctor && $self->arity == $term->getarity) {
             for my $i (0 .. $self->arity - 1) {
                 if (! $self->{args}[$i]->unify($term->getarg($i), $stack)) {
@@ -231,7 +297,7 @@ sub unify {
             return; # functor/arity don't match ...
         }
     } # at least one arg not bound ...
-    if ($self->bound) {
+    if ($self->{bound}) {
         # added missing occurcheck
         if ($self->occurcheck) {
             if ($self->occurs($term->varid)) {
@@ -256,9 +322,10 @@ sub unify {
 
 sub refresh {
     my ($self, $term_aref) = @_;
-    if ($self->bound) {
-        return $self->ref->refresh($term_aref) if $self->deref;
-        my $term = $self->new($self->functor, $self->arity);
+    if ($self->{bound}) {
+        return $self->ref->refresh($term_aref) if $self->{deref};
+        return $self unless $self->{arity};
+        my $term = $self->dup;
         for my $i (0 .. $self->arity - 1) {
             $term->{args}[$i] = $self->{args}[$i]->refresh($term_aref); # for 0 .. $self->arity - 1;
         }
@@ -294,10 +361,10 @@ sub _to_data {
         ($parent->{_results}{$varname}) = $self->_to_data($parent);
         $self->{varname} = $varname;
     }
-    if ($self->bound) {
+    if ($self->{bound}) {
         my $functor = $self->functor;
         my $arity   = $self->arity;
-        return $self->ref->_to_data($parent) if $self->deref;
+        return $self->ref->_to_data($parent) if $self->{deref};
         return [] if NULL eq $functor && ! $arity;
         if ("cons" eq $functor && 2 == $arity) {
             my @result = $self->{args}[0]->_to_data($parent);
@@ -337,11 +404,11 @@ sub _to_data {
 
 sub to_string {
     my ($self, $extended) = @_;
-    if ($self->bound) {
+    if ($self->{bound}) {
         my $functor = $self->functor;
         my $arity   = $self->arity;
         my $prettyprint = $self->prettyprint;
-        return $self->ref->to_string($extended) if $self->deref;
+        return $self->ref->to_string($extended) if $self->{deref};
         return "[]" if NULL eq $functor && ! $arity && $prettyprint;
         my $string;
         if ("cons" eq $functor && 2 == $arity && $prettyprint) {
@@ -376,6 +443,49 @@ sub to_string {
     return "_" . $self->varid;
 }
 
+# ----------------------------------------------------------
+#  Copy a term to put in the database
+#    - with new variables (freshly renumbered)
+# ----------------------------------------------------------
+
+# XXX XProlog
+my %CVDICT;
+my $CVN;
+
+sub cleanUp {
+    my $self = shift;
+    %CVDICT = ();
+    $CVN    = 0;
+    return $self->_cleanUp;
+}
+
+sub _cleanUp {
+    my $self = shift;
+    my $term;
+    if ($self->{bound}) {
+        if ($self->{deref}) {
+            return $self->{ref}->_cleanUp;
+        }
+        elsif (! $self->{arity}) {
+            return $self;
+        }
+        else {
+            $term = $self->dup;
+            for my $i ( 0 .. $self->{arity} - 1) {
+                $term->{args}[$i] = $self->{args}[$i]->_cleanUp;
+            }
+        }
+    }
+    else { # unbound
+        $term = $CVDICT{$self};
+        unless ($term) {
+            $term = $self->new($CVN++);
+            $CVDICT{$self} = $term; # XXX Should this be $self->to_string?
+        }
+    }
+    return $term;
+}
+
 # This constructor is the simplest way to construct a term.  The term is given
 # in standard notation.
 # Example: my $term = Term->new(Parser->new("p(1,a(X,b))"));
@@ -397,8 +507,7 @@ sub _new_from_parser {
 
     $parser->skipspace; # otherwise we crash when we hit leading
                         # spaces
-    if ($parser->current =~ /^[[:lower:]'"]$/ ||
-        ($self->internalparse && '_' eq $parser->current)) {
+    if ($parser->current =~ /^[[:lower:]'"]$/) {
         $self->{functor} = $parser->getname;
         $self->{bound}   = 1;
         $self->{deref}   = 0;
@@ -495,10 +604,65 @@ sub _new_from_parser {
             $self->{args}[1] = $ts->[1];
         }
     }
+    elsif ('!' eq $parser->current) {
+        $parser->advance;
+        return $self->CUT;
+    }
     else {
-        $parser->parseerror("Term should begin with a letter, a digit, or '['");
+        $parser->parseerror("Term should begin with a letter, a digit, or '[', not a @{[$parser->current]}");
     }
     return $self;
+}
+
+# only used for integer results
+# From XProlog
+sub value {
+    # int i, res = 0;
+    my $self = shift;
+    my ($i, $res) = (0,0);
+    
+    unless ($self->{bound}) {
+        require Carp;
+        my $term = $self->to_string;
+        Carp::croak("Tried to to get value of unbound term ($term)");
+    }
+    return $self->{ref}->value if $self->{deref};
+    my $functor = $self->getfunctor;
+    my $arity   = $self->getarity;
+    if ('rnd' eq $functor && 1 == $arity) {
+        # implement rand
+    }
+    if ($arity < 2) {
+        require Carp;
+        my $term = $self->to_string;
+        Carp::croak("Term ($term) is not binary");
+    }
+    my $arg0 = $self->{args}[0]->value;
+    my $arg1 = $self->{args}[1]->value;
+
+    return $arg0 + $arg1 if '+'   eq $functor;
+    return $arg0 - $arg1 if '-'   eq $functor;
+    return $arg0 * $arg1 if '*'   eq $functor;
+    return $arg0 / $arg1 if '/'   eq $functor;
+    return $arg0 % $arg1 if 'mod' eq $functor;
+    require Carp;
+    Carp::croak("Unknown operator ($functor)");
+}
+
+# public String dump() {
+#     return " - Term: " + functor + "/" + arity + ", "
+#         + (bound? "bound, " : "")
+#         + (deref? "ref, " : "")
+#         + varid ;
+# }
+
+
+sub dump {
+    my $self = shift;
+    return " - Term: $self->{functor}/$self->{arity}, "
+         . ($self->{bound}? "bound, " : "")
+         . ($self->{deref}? "ref, "   : "")
+         . $self->{varid};
 }
 
 1;

@@ -1,5 +1,5 @@
 package AI::Prolog::Parser;
-$REVISION = '$Id: Parser.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
+$REVISION = '$Id: Parser.pm,v 1.3 2005/02/13 21:01:02 ovid Exp $';
 
 $VERSION = '0.02';
 use strict;
@@ -11,6 +11,9 @@ use Text::Balanced qw/extract_quotelike extract_delimited/;
 
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::TermList';
+use aliased 'AI::Prolog::TermList::Clause';
+use aliased 'AI::Prolog::TermList::Primitive';
+use aliased 'AI::Prolog::KnowledgeBase';
 
 sub new {
     my ($proto, $string) = @_;
@@ -46,11 +49,6 @@ sub to_string {
     my $self = shift;
     my $output = Clone::clone($self);
     $output->{_vardict} = $self->_vardict_to_string;
-    #print "_varnum  => " . $self->_varnum  . "\n" 
-    #    . "_vardict => " . $output->{_vardict} . "\n"  
-    #    . "_str     => " . $self->_str     . "\n" 
-    #    . "_posn    => " . $self->_posn    . "\n" 
-    #    . "_start   => " . $self->{_start}   . "\n"; 
     return "{" 
         . substr($self->{_str}, 0, $self->{_posn})
         . " ^ " 
@@ -82,6 +80,7 @@ sub empty {
 # Move a character forward
 sub advance {
     my $self = shift;
+    # print $self->current; # XXX
     $self->{_posn}++ unless $self->{_posn} >= length $self->{_str};
 }
 
@@ -105,7 +104,7 @@ sub getname {
     else {
         $self->{_posn}++;
         my $length = 0;
-        $self->{_posn}++, $length++ while $self->current =~ /^[[:alnum:]]/;
+        $self->{_posn}++, $length++ while $self->current =~ /^[[:alnum:]_]/;
         
         $getname   = substr $self->{_str} => $self->{_start}, $length + 1;
         $self->{_posn} = length $self->{_str}
@@ -199,28 +198,21 @@ sub nextclause {
 # class method, not an instance method
 sub consult {
     my ($class, $program, $db) = @_;
-    $db ||= {};
+    $db ||= KnowledgeBase->new;
     my $ps = $class->new($program);
     $ps->skipspace;
-
-    my $prevfunc  = "";
-    my $prevarity = -1;     
-    my $clausenum = 1;
 
     until ($ps->empty) {
         my $tls   = TermList->new($ps);
         my $func  = $tls->term->getfunctor;
         my $arity = $tls->term->getarity;
 
-        if ($func eq $prevfunc && $arity == $prevarity) {
-            $clausenum++;
-        }
-        else {
-            $clausenum = 1;
-            $prevfunc  = $func;
-            $prevarity = $arity;
-        }
-        $db->{"$func/$arity-$clausenum"} = $tls;
+        my $head = $tls->term;
+        my $body = $tls->next;
+        my $key  = "$func/$arity";
+
+        my $add = ($body && $body->isa(Primitive))? 'addPrimitive' : 'addClause';
+        $db->$add(Clause->new($head,$body));
         $ps->skipspace;
         $ps->nextclause; # new set of vars
     }
@@ -229,7 +221,7 @@ sub consult {
 
 sub resolve {
     my ($class, $db) = @_;
-    foreach my $tls (values %$db) {
+    foreach my $tls (values %{$db->ht}) {
         $tls->resolve($db);
     }
 }

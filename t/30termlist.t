@@ -1,9 +1,9 @@
 #!/usr/bin/perl
-# '$Id: 30termlist.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
+# '$Id: 30termlist.t,v 1.2 2005/02/13 21:01:02 ovid Exp $';
 use warnings;
 use strict;
 #use Test::More 'no_plan';
-use Test::More tests => 18;
+use Test::More tests => 14;
 
 my $CLASS;
 BEGIN
@@ -25,11 +25,8 @@ ok my $tls = $CLASS->new($parser),
     '... and creating a new termlist from a parser object should succeed';
 isa_ok $tls, $CLASS, '... and the object it creates';
 
-can_ok $tls, 'numclauses';
-is $tls->numclauses, 0, '... and it should start with 0 clauses';
-
 can_ok $tls, 'to_string';
-is $tls->to_string, '[p(_0,p(_0,_1))(0 clauses)]',
+is $tls->to_string, '[p(_0,p(_0,_1))]',
     '... and its to_string representation should be correct';
 
 can_ok $tls, 'term';
@@ -41,17 +38,13 @@ is $term->arity, 2, '... and the correct arity';
 my $db = Parser->consult('p(this,that).');
 can_ok $tls, 'resolve';
 $tls->resolve($db);
-is $tls->numclauses, 1,
-    '... and the numclauses should now be correct';
-is $tls->to_string, '[p(_0,p(_0,_1))(1 clauses)]',
+is $tls->to_string, '[p(_0,p(_0,_1))]',
     '... and its to_string representation should reflect this';
 
 $db = Parser->consult('p(this,that).');
 $tls = $CLASS->new(Parser->new('p(X,p(X,Y)).'));
 $tls->{definer}[0] = 'anything';
 $tls->resolve($db);
-is $tls->numclauses, 0,
-    '... but the termlist should not resolve if there are previously unresolved terms';
 
 $tls = $CLASS->new(Parser->new(<<'END_PROLOG'));
 father(john, sally).
@@ -60,5 +53,5 @@ daughter(X) :-
   girl(X),
   father(ANYONE, X).
 END_PROLOG
-is $tls->to_string, '[father(john,sally)(0 clauses)]',
+is $tls->to_string, '[father(john,sally)]',
     'Building a complex termlist should succeed';

@@ -1,13 +1,10 @@
-package AI::Prolog::Introduction;
-$REVISION = '$Id: Introduction.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
-$VERSION  = '0.01';
-
-1;
-__END__
-
 =head1 NAME
 
 AI::Prolog::Introduction - The what and the why of logic programming.
+
+=head1 REVISION
+
+ $Id: Introduction.pod,v 1.1 2005/02/13 20:59:46 ovid Exp $
 
 =head1 RATIONALE
 
@@ -121,7 +118,9 @@ Translating all of this into C<AI::Prolog> looks like this:
 
 W-Prolog:  L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>
 
-Michael BartE<225>k's online guide to programming Prolog:
+X-Prolog:  L<http://www.iro.umontreal.ca/~vaucher/XProlog/>
+
+Roman BartE<225>k's online guide to programming Prolog:
 L<http://kti.ms.mff.cuni.cz/~bartak/prolog/index.html>
 
 =head1 AUTHOR

@@ -1,5 +1,23 @@
 Revision history for Perl extension AI::Prolog.
 
+0.05  Sun Feb 13
+      Put the database into its own class.
+
+      Pulled engine backtracking out into its own method.
+
+      Reduced the scope of many of the Engine::_run variables to ensure data
+      wasn't leaking.
+
+      Added simple "aiprolog" shell.
+
+      Added cut operator, retract(X), and assert(X).
+
+      Added more examples and simple adventure game to both demonstrate the shell
+      and how Prolog works.
+
+      Completely reworked the engine internals to allow new predicates to be
+      easily added.
+
 0.04  Sun Jan 30
       Added support for quoting terms.  
       
@@ -18,7 +36,7 @@ Revision history for Perl extension AI::Prolog.
       Added tests for built-in predicates.
 
       Added query() function to AI::Logic::Engine to allow successive queries
-      without a new boostrap.
+      without a new bootstrap.
 
 0.02  Sun Jan 23
       First public release of AI::Prolog.

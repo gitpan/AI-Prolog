@@ -1,9 +1,9 @@
 #!/usr/bin/perl
-# '$Id: 50engine.t,v 1.2 2005/01/23 23:04:05 ovid Exp $';
+# '$Id: 50engine.t,v 1.4 2005/02/13 21:01:02 ovid Exp $';
 use warnings;
 use strict;
-#use Test::More tests => 16;
-use Test::More 'no_plan';
+use Test::More tests => 35;
+#use Test::More 'no_plan';
 use Test::MockModule;
 use Test::Differences;
 use Clone qw/clone/;
@@ -27,8 +27,8 @@ my $database = Parser->consult(<<'END_PROLOG');
 append([], X, X).
 append([W|X],Y,[W|Z]) :- append(X,Y,Z).
 END_PROLOG
-my @keys = sort keys %$database;
-my @expected = qw{append/3-1 append/3-2};
+my @keys = sort keys %{$database->{ht}};
+my @expected = qw{append/3};
 is_deeply \@keys, \@expected,
     'A brand new database should only have the predicates listed in the query';
 
@@ -41,26 +41,25 @@ ok my $engine = $CLASS->new($query, $database),
 isa_ok $engine, $CLASS, '... and the object it returns';
 
 @expected = qw{
-    append/3-1
-    append/3-2
-    call/1-1
-    eq/2-1
-    fail/0-1
-    if/3-1
-    nl/0-1
-    not/1-1
-    once/1-1
-    or/2-1
-    or/2-2
-    print/1-1
-    true/0-1
-    wprologcase/3-1
-    wprologcase/3-2
-    wprologtest/2-1
-    wprologtest/2-2
+    !/0
+    append/3
+    assert/1
+    call/1
+    eq/2
+    fail/0
+    if/3
+    nl/0
+    not/1
+    once/1
+    or/2
+    print/1
+    retract/1
+    true/0
+    wprologcase/3
+    wprologtest/2
 };
 
-@keys = sort keys %$database;
+@keys = sort keys %{$database->ht};
 is_deeply \@keys, \@expected,
     '... and the basic prolog terms should be bootstrapped';
 can_ok $engine, 'results';
@@ -132,5 +131,3 @@ is_deeply $engine->results, ['append', [qw/a b c d/], [], [qw/a b c d/]],
     '... and subsequent results should match expectations';
 ok ! defined $engine->results,
     '... and it should return undef when there are no more results'
-
-

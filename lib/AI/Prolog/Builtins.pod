@@ -1,18 +1,14 @@
-package AI::Prolog::Builtins;
-$REVISION = '$Id: Prolog.pm,v 1.4 2005/01/29 16:44:47 ovid Exp $';
-$VERSION  = '0.01';
-
-1;
-__END__
-
 =head1 NAME
 
 AI::Prolog::Builtins - Builtin predicates that AI::Prolog supports
 
+=head1 REVISION
+
+ $Id: Builtins.pod,v 1.1 2005/02/13 20:59:46 ovid Exp $
+
 =head1 GRAMMAR
 
-The language is given by the following simple grammar (pulled directly from Dr.
-Winikoff's page):
+The language is given by the following grammar;
 
  Program   ::= Rule | Rule Program
  Query     ::= Term
@@ -24,6 +20,7 @@ Winikoff's page):
                  | print(Term) | nl | eq(Term , Term)
                  | if(Term , Term , Term) | or(Term , Term ) 
                  | not(Term) | call(Term) | once(Term)
+                 | assert(Term) | retract(Term) | !
  Number    ::= Digit | Digit Number
  Digit     ::= 0 | ... | 9
  AtomName  ::= LowerCase NameChars
@@ -67,6 +64,24 @@ Use this instead:
 =head1 BUILTINS
 
 =over 4
+
+=item * C<!>.
+
+The "cut" operator.  This is used when you wish to tell Prolog that you only
+need to satisfy a goal once.  For example, if you wish to deny someone the
+right to rent videos if they have overdue videos, you might use the cut
+operator as soon as you see they have any overdue video.  The fact that they
+have more than one overdue video doesn't matter.
+
+See the C<cut.pl> program in the C<examples/> directory that comes with this
+distribution.
+
+=item * C<assert(X)>.
+
+Add new facts to the database.  Only facts can be added, not rules.  This may
+change in the future.  See C<retract(X)>.
+
+ assert(loves(ovid,perl)).
 
 =item * C<call(X)>.
 
@@ -112,6 +127,13 @@ an underscore followed by the internal variable number (e.g., "_284").
  print("Something").  % prints "Something"
  print(Something).    % prints whatever variable Something is bound to 
 
+=item * C<retract(X)>.
+
+Remove facts from the database.  You cannot remove rules.  This may change in
+the future.  See C<assert(X)>.
+
+ retract(loves(ovid,java)).
+
 =back
 
 =head1 LIMITATIONS
@@ -152,30 +174,38 @@ the form of system predicates that call out to Perl.  We can define most of
 what we need logically, but it's very slow and complicated, so we won't do
 that.
 
-=item * Database access
-
-No, we're not talking DBI.  We're talking about C<clause>, C<assert> and
-C<retract>.  We don't have that yet.
-
-=item * Add cut.
-
-Currently, we can use C<once(X)> to simulate it.  Think of this predicate as
-being equivalent to:
-
- once(X) :- X, !;
-
 =back
 
 =head1 BUGS
 
-I'm sure there are bugs.  I don't know of any right now.  Let me know if (when)
-you find them.  See the TODO list before that, though.
+Currently we cannot directly access bound variables in the tail of a list used
+in a query when using unformatted results:
+
+ $prolog->query('foo([Head|Tail], bar).');
+ while (my $result = $prolog->results) {
+    print Dumper $result->Head;
+    print Dumper $result->Tail; # doesn't work
+ }
+
+You'll have to switch to C<raw_results> and parse the data manually:
+
+ $prolog->raw_results(1);
+ $prolog->query('foo([Head|Tail], bar).');
+ while (my $result = $prolog->results) {
+     print Dumper $result;
+ }    
 
 =head1 SEE ALSO
 
+L<AI::Prolog::Introduction>
+
+L<AI::Prolog>
+
 W-Prolog:  L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>
 
-Michael BartE<225>k's online guide to programming Prolog:
+X-Prolog:  L<http://www.iro.umontreal.ca/~vaucher/XProlog/>
+
+Roman BartE<225>k's online guide to programming Prolog:
 L<http://kti.ms.mff.cuni.cz/~bartak/prolog/index.html>
 
 =head1 AUTHOR

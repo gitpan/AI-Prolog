@@ -26,9 +26,6 @@ perform(walk(P1,P2),
         state(P1, BP, onfloor, H),
         state(P2, BP, onfloor, H)).
 
-/* getfood(state(_,_,_,has)). */
-/* I'll have to fix this soonish! */
-
 getfood(state(Bogus1,Bogus2,Bogus3,has)).
 
 getfood(S1) :- perform(Act, S1, S2),

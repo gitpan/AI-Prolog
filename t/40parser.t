@@ -1,9 +1,9 @@
 #!/usr/bin/perl
-# '$Id: 40parser.t,v 1.1 2005/01/23 20:23:14 ovid Exp $';
+# '$Id: 40parser.t,v 1.3 2005/02/13 21:01:02 ovid Exp $';
 use warnings;
 use strict;
-#use Test::More tests => 56;
-use Test::More 'no_plan';
+use Test::More tests => 63;
+#use Test::More 'no_plan';
 use Test::MockModule;
 
 my $CLASS;
@@ -17,6 +17,7 @@ BEGIN
 
 # I hate the fact that they're interdependent.  That brings a 
 # chicken and egg problem to squashing bugs.
+use aliased 'AI::Prolog::KnowledgeBase';
 use aliased 'AI::Prolog::TermList';
 use aliased 'AI::Prolog::Term';
 
@@ -118,8 +119,9 @@ can_ok $parser, 'resolve';
 my $termlist = Test::MockModule->new(TermList);
 my $resolve = 0;
 $termlist->mock('resolve', sub {$resolve++});
-my %db = map { $_ => TermList->new } 1 .. 3;
-$parser->resolve(\%db);
+my $new_db = KnowledgeBase->new;
+%{$new_db->ht} = map { $_ => TermList->new } 1 .. 3;
+$parser->resolve($new_db);
 is $resolve, 3, '... and TermList->resolve should be called once for each termlist in the db';
 
 can_ok $CLASS, 'consult';
@@ -127,17 +129,15 @@ my $db = $CLASS->consult(<<'END_PROLOG');
 owns(merlyn, gold).
 owns(ovid, rubies).
 END_PROLOG
-is ref $db, 'HASH', '... and it should return a database in the form of a hashref';
-is keys %$db, 2, '... with one key for each term';
+isa_ok $db, KnowledgeBase, '... and the object it returns';
+$db = $db->ht;
+is keys %$db, 1, '... with only one key for one term';
 my @keys = sort keys %$db;
-is_deeply \@keys, ['owns/2-1', 'owns/2-2'],
+is_deeply \@keys, ['owns/2'],
     '... and the keys should be in the form $functor/$arity-$clausenum';
 my $tls = $db->{$keys[0]};
 isa_ok $tls, TermList, '... and object the keys point to';
-is $tls->to_string, '[owns(merlyn,gold)(0 clauses)]',
-    '... and the termlist should show the correct term(s)';
-$tls = $db->{$keys[1]};
-is $tls->to_string, '[owns(ovid,rubies)(0 clauses)]',
+is $tls->to_string, 'owns(merlyn,gold) :- null',
     '... and the termlist should show the correct term(s)';
 
 $parser = $CLASS->new(<<'END_PROLOG');

@@ -1,0 +1,123 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+use Pod::Usage 1.12;
+use aliased 'AI::Prolog';
+AI::Prolog::Engine->formatted(1);
+use lib '../lib';
+
+my $file    = shift;
+my $program = '';
+if ($file) {
+    open FH, "< $file" or die "Could not open ($file) for reading: $!";
+    $program = do { local $/; <FH> };
+}
+my $prolog  = Prolog->new($program);
+my $version = Prolog->VERSION;
+
+print "Welcome to AI::Prolog v $version\n\n";
+
+my $MORE    = 1;
+my $COMMAND = qr/^%\s*/;
+while (1) {
+    print "\n?- ";
+    my $query;
+    chomp ($query = <STDIN>) until $query;
+    
+    if ( $query =~ /^\s*\?/ ) {
+        help();
+        next;
+    }
+    elsif ( $query =~ $COMMAND ) {
+        last if $query =~ /$COMMAND?(?:halt|quit|exit|stop)/i;
+        if ($query =~ /$COMMAND(?:help)/i) {
+            help();
+        }
+        elsif ($query =~ /${COMMAND}more/i) {
+            $MORE = 1;
+        }
+        elsif ($query =~ /${COMMAND}no\s*more/i) {
+            $MORE = 0;
+        }
+        next;
+    }
+
+    eval {$prolog->query($query)};
+    if ($@) {
+        warn $@;
+        next;
+    }
+    print $prolog->results, "\n";
+    while ($MORE && user_wants_more()) {
+        print $prolog->results, "\n";
+    }
+}
+    
+sub user_wants_more {
+    print "More? (y/N) ";
+    my $response = <STDIN>;
+    return $response =~ /^[Yy]/;
+}
+
+my $offset;
+sub help {
+    seek DATA,($offset||=tell DATA), 0;
+    pod2usage({
+        -verbose => 2, 
+        -input   => \*DATA,
+        -exitval => 'NOEXIT',
+    });
+}
+
+__DATA__
+
+=head1 NAME 
+
+aiprolog --  A simple Prolog shell using AI::Prolog.
+
+=head1 SYNOPSIS
+
+ usage: aiprolog <optional prolog program name>
+
+=head1 DESCRIPTION
+
+C<aiprolog> is a simple prolog shell using L<AI::Prolog> as the backend.
+
+See the documentation for more detail on the Prolog features that L<AI::Prolog>
+currently accepts.
+
+=head2 Commands
+
+Commands specific to aiprolog:
+
+ "% more"     -- enables prompting for more results (default)
+ "% no more"  -- disables prompting for more results
+ "% nomore"   -- same as "no more"
+ "% halt"     -- stops the shell
+ "% help"     -- display this message
+
+Note that the percent sign must preceed the command.  The percent sign
+indicates a Prolog comment.  Without that, aiprolog will think you're trying to
+execute a prolog command.
+
+aiprolog-specific commands are case-insensitive.
+
+=head2 The game
+
+If you are hoping to use this to play the bundled "Spider" game, I recommend
+the following:
+
+ aiprolog location/of/spider.pro
+
+At the prompt:
+
+ ?- % no more
+
+That disables the "More? (y/N)" query which gets very annoying while playing
+the game, though it's useful when you really want to program.
+
+Then issue the "start" command (defined in "spider.pro").
+
+ ?- start.
+
+=cut
