@@ -1,5 +1,5 @@
 package AI::Prolog::KnowledgeBase;
-$REVISION = '$Id: KnowledgeBase.pm,v 1.1 2005/02/13 20:59:19 ovid Exp $';
+$REVISION = '$Id: KnowledgeBase.pm,v 1.2 2005/02/23 06:42:02 ovid Exp $';
 $VERSION = '0.02';
 use strict;
 use warnings;
@@ -202,27 +202,28 @@ sub set {
     $self->{ht}{$key} = $value->cleanUp;
 }
 
+sub _print {print @_}
 sub dump {
     my ($self, $full) = @_;
     my $i = 1;
     while (my ($key, $value) = each %{$self->{ht}}) {
         next if ! $full && $self->{primitives}{$key};
         if ($value->isa(Clause)) {
-            print $i++.". $key: \n";
+            _print($i++.". $key: \n");
             do {
-                print "   " . $value->term->to_string;
+                _print("   " . $value->term->to_string);
                 if ($value->next) {
-                    print " :- " . $value->next->to_string;
+                    _print(" :- " . $value->next->to_string);
                 }
-                print ".\n";
+                _print(".\n");
                 $value = $value->nextClause;
             } while ($value);
         }
         else {
-            print $i++.". $key = $value\n";
+            _print($i++.". $key = $value\n");
         }
     }
-    print "\n";
+    _print("\n");
 }
 
 sub list {

@@ -1,0 +1,114 @@
+#!/usr/bin/perl
+# '$Id: 80math.t,v 1.2 2005/02/24 07:16:24 ovid Exp $';
+use warnings;
+use strict;
+#use Test::More tests => 33;
+use Test::More qw/no_plan/;
+use Test::MockModule;
+use Clone qw/clone/;
+use Test::Differences;
+
+BEGIN
+{
+    chdir 't' if -d 't';
+    unshift @INC => '../lib';
+}
+use aliased 'AI::Prolog';
+use aliased 'AI::Prolog::Engine';
+use aliased 'AI::Prolog::KnowledgeBase';
+#
+# Math
+#
+
+Engine->formatted(1);
+#Engine->trace(1);
+my $prolog = Prolog->new(<<'END_PROLOG');
+value(rubies, 100).
+value(paper, 1).
+thief(badguy).
+steals(PERP, STUFF) :-
+    value(STUFF, DOLLARS),
+    gt(DOLLARS, 50).
+END_PROLOG
+
+$prolog->query('is(X,7)');
+is $prolog->results, 'is(7,7)', 'is/2 should be able to bind a term to a var';
+
+$prolog->query('is(7,X)');
+eval {$prolog->results};
+like $@, qr/Tried to to get value of unbound term \(_0\)/,
+    '... but trying to call is(7,X) with an unbound rhs should die';
+
+$prolog->query('is(7,7)');
+is $prolog->results, 'is(7,7)', '... but it should succeed if both terms are bound and equal';
+
+$prolog->query('is(5,7)');
+ok ! defined $prolog->results, '... and it should fail if both terms are bound but unequal';
+
+$prolog->query('gt(4,3)');
+is $prolog->results, 'gt(4,3)',
+    'gt(X,Y) should succeed if the first argument > the second argument.';
+
+$prolog->query('gt(3,34)');
+ok ! $prolog->results,
+    '... and it should fail if the first argument < the second argument.';
+
+$prolog->query('gt(3,3)');
+ok ! $prolog->results,
+    '... and it should fail if the first argument = the second argument.';
+    
+$prolog->query('steals(badguy, X)');
+is $prolog->results, 'steals(badguy,rubies)',
+    '... and it should succeed as part of a complicated query';
+ok ! $prolog->results, '... but it should not return more than the correct results';
+
+$prolog->query('ge(4,3)');
+is $prolog->results, 'ge(4,3)',
+    'ge(X,Y) should succeed if the first argument > the second argument.';
+
+$prolog->query('ge(3,34)');
+ok ! $prolog->results,
+    '... and it should fail if the first argument < the second argument.';
+
+$prolog->query('ge(3,3)');
+is $prolog->results, 'ge(3,3)',
+    '... and it should succeed if the first argument = the second argument.';
+    
+$prolog->query('lt(3,4)');
+is $prolog->results, 'lt(3,4)',
+    'lt(X,Y) should succeed if the first argument < the second argument.';
+
+$prolog->query('lt(34,3)');
+ok ! $prolog->results,
+    '... and it should fail if the first argument < the second argument.';
+
+$prolog->query('lt(3,3)');
+ok ! $prolog->results,
+    '... and it should fail if the first argument = the second argument.';
+
+$prolog->query('le(3,4)');
+is $prolog->results, 'le(3,4)',
+    'le(X,Y) should succeed if the first argument < the second argument.';
+
+$prolog->query('le(34,3)');
+ok ! $prolog->results,
+    '... and it should fail if the first argument < the second argument.';
+
+$prolog->query('le(3,3)');
+is $prolog->results, 'le(3,3)',
+    '... and it should succeed if the first argument = the second argument.';
+
+$prolog->query('is(X,plus(3,4))');
+is $prolog->results, 'is(7,plus(3,4))', 'Basic addition should succeed';
+
+$prolog->query('is(X,minus(3,4))');
+is $prolog->results, 'is(-1,minus(3,4))', 'Basic substraction should succeed';
+
+$prolog->query('is(X,mult(3,4))');
+is $prolog->results, 'is(12,mult(3,4))', 'Basic multiplication should succeed';
+
+$prolog->query('is(X,div(12,3))');
+is $prolog->results, 'is(4,div(12,3))', 'Basic division should succeed';
+
+$prolog->query('is(X,mod(12,5))');
+is $prolog->results, 'is(2,mod(12,5))', 'Basic modulus should succeed';

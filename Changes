@@ -1,5 +1,24 @@
 Revision history for Perl extension AI::Prolog.
 
+0.62  Fri Feb 25
+      Added code to avoid bug in some Perl's where "undef" looks
+      like a number.
+      Major performance improvement.  Now runs about 40% faster.
+      Added 
+        listing.
+        println(X).
+        is(X,Y).
+        plus(X,Y).
+        minus(X,Y).
+        mult(X,Y).
+        div(X,Y).
+        mod(X,Y).
+        ge(X,Y).
+        gt(X,Y).
+        le(X,Y).
+        lt(X,Y).
+      Added towers of hanoi and a scheduler to the examples/.
+
 0.61  Mon Feb 21
       Added var(X).
       Disabled tracing in the aiprolog shell (whoops!)
@@ -32,7 +51,9 @@ Revision history for Perl extension AI::Prolog.
       Completely reworked the engine internals to allow new predicates to be
       easily added.
 
-0.4   Sun Jan 30
+      * XXX Also screwed up the numbering scheme.  Grumble XXX *
+
+0.04  Sun Jan 30
       Added support for quoting terms.  
       
       Added Engine->formatted method which allows results to be returned as
@@ -46,15 +67,14 @@ Revision history for Perl extension AI::Prolog.
 
       Massive documentation update.
 
-0.3   Sun Jan 23
+0.03  Sun Jan 23
       Added tests for built-in predicates.
 
       Added query() function to AI::Logic::Engine to allow successive queries
       without a new bootstrap.
 
-0.2   Sun Jan 23
+0.02  Sun Jan 23
       First public release of AI::Prolog.
 
-0.1   Thu Jan 20 20:47:49 PST 2005
+0.01  Thu Jan 20 20:47:49 PST 2005
 	  original version; created by make_project 0.1
-

@@ -1,6 +1,6 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.8 2005/02/20 23:56:05 ovid Exp $';
-$VERSION  = '0.61';
+$REVISION = '$Id: Prolog.pm,v 1.10 2005/02/24 07:16:24 ovid Exp $';
+$VERSION  = '0.62';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -313,8 +313,6 @@ See L<BUGS>
  perl examples/path.pl 3
 
 That never returns or I haven't run it long enough.
-
-=item * Math.
 
 =item * Support for more builtins.
 

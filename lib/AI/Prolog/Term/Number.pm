@@ -11,7 +11,7 @@ use aliased 'AI::Prolog::Term';
 sub new {
     my ($proto, $number) = @_;
     my $self = $proto->SUPER::new($number, 0);
-    $self->{varid} = looks_like_number($number)
+    $self->{varid} = defined $number && looks_like_number($number)
         ? $number
         : 0;
     return $self;

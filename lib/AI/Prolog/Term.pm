@@ -1,11 +1,12 @@
 package AI::Prolog::Term;
-$REVISION = '$Id: Term.pm,v 1.3 2005/02/13 21:01:02 ovid Exp $';
+$REVISION = '$Id: Term.pm,v 1.5 2005/02/24 07:16:24 ovid Exp $';
 
 $VERSION = '0.03';
 use strict;
 use warnings;
 
 use aliased 'AI::Prolog::Term::Cut';
+use aliased 'AI::Prolog::Term::Number';
 use aliased 'AI::Prolog::Parser';
 
 use aliased 'Hash::AsObject';
@@ -51,15 +52,15 @@ sub new {
     my $proto = shift;
     my $class = CORE::ref $proto || $proto; # yes, I know what I'm doing
     return $class->_new_var unless @_;
-    if (1 == @_) {
+    if (2 == @_) { # more common (performance)
+        return $class->_new_from_functor_and_arity(@_) unless 'ARRAY' eq CORE::ref $_[1];
+        return $class->_new_from_functor_and_array(@_) if     'ARRAY' eq CORE::ref $_[1];
+    }
+    elsif (1 == @_) {
         my $arg = shift;
         return $class->_new_with_id($arg)     if ! CORE::ref $arg && $arg =~ /^[[:digit:]]+$/;
         return $class->_new_from_string($arg) if ! CORE::ref $arg;
         return $class->_new_from_parser($arg) if   CORE::ref $arg && $arg->isa(Parser);
-    }
-    elsif (2 == @_) {
-        return $class->_new_from_functor_and_array(@_) if 'ARRAY' eq CORE::ref $_[1];
-        return $class->_new_from_functor_and_arity(@_);
     }
     elsif(3 == @_) {
         return $class->_new_binop(@_);
@@ -187,7 +188,7 @@ sub dup {
     $self->new($self->{functor},$self->{arity});
 }
 
-# biind a variable to a term
+# bind a variable to a term
 sub bind {
     my ($self, $term) = @_;
     return if $self eq $term;
@@ -231,7 +232,7 @@ sub getarg {
     my ($self, $pos) = @_;
     # should check if position is valid
     if ($self->{bound}) {
-        return $self->ref->getarg($pos) if $self->{deref};
+        return $self->{ref}->getarg($pos) if $self->{deref};
         return $self->{args}[$pos];
     }
     else {
@@ -243,15 +244,15 @@ sub getarg {
 sub getfunctor {
     my $self = shift;
     return "" unless $self->{bound};
-    return $self->ref->getfunctor if $self->{deref};
-    return $self->functor;
+    return $self->{ref}->getfunctor if $self->{deref};
+    return $self->{functor};
 }
 
 sub getarity {
     my $self = shift;
     return 0 unless $self->{bound};
-    return $self->ref->getarity if $self->{deref};
-    return $self->arity;
+    return $self->{ref}->getarity if $self->{deref};
+    return $self->{arity};
 }
 
 # check whether a variable occurs in a term
@@ -282,14 +283,12 @@ sub occurs1 {
 
 sub unify {
     my ($self, $term, $stack) = @_;
-    return $self->ref->unify($term, $stack) if $self->{bound} and $self->{deref};
-    return $self->unify($term->ref, $stack) if $term->{bound} and $term->{deref};
+    $term = $term->{ref} if $term->{bound} and $term->{deref};
+    $self = $self->{ref} if $self->{bound} and $self->{deref};
     if ($self->{bound} and $term->{bound}) { # bound and not deref
-        if ($self->functor eq $term->getfunctor && $self->arity == $term->getarity) {
-            for my $i (0 .. $self->arity - 1) {
-                if (! $self->{args}[$i]->unify($term->getarg($i), $stack)) {
-                    return;
-                }
+        if ($self->{functor} eq $term->getfunctor && $self->{arity} == $term->getarity) {
+            for my $i (0 .. $self->{arity} - 1) {
+                return unless $self->{args}[$i]->unify($term->getarg($i), $stack);
             }
             return 1;
         }
@@ -299,8 +298,8 @@ sub unify {
     } # at least one arg not bound ...
     if ($self->{bound}) {
         # added missing occurcheck
-        if ($self->occurcheck) {
-            if ($self->occurs($term->varid)) {
+        if ($OCCURCHECK) {
+            if ($self->occurs($term->{varid})) {
                 return;
             }
         }
@@ -309,7 +308,7 @@ sub unify {
         return 1;
     }
     # do occurcheck if turned on
-    return if $self->occurcheck && $term->occurs($self->varid);
+    return if $OCCURCHECK && $term->occurs($self->{varid});
     $self->bind($term);
     push @{$stack} => $self; # save for backtracking
     return 1;
@@ -323,16 +322,21 @@ sub unify {
 sub refresh {
     my ($self, $term_aref) = @_;
     if ($self->{bound}) {
-        return $self->ref->refresh($term_aref) if $self->{deref};
+        if ($self->{deref}) {
+            $self = $self->{ref};
+            return $self->_getvar($term_aref, $self->{varid})
+                unless $self->{bound};
+        }
         return $self unless $self->{arity};
-        my $term = $self->dup;
-        for my $i (0 .. $self->arity - 1) {
-            $term->{args}[$i] = $self->{args}[$i]->refresh($term_aref); # for 0 .. $self->arity - 1;
+        #my $term = $self->dup;
+        my $term = (CORE::ref $self)->_new_from_functor_and_arity($self->{functor},$self->{arity});
+        for my $i (0 .. $self->{arity} - 1) {
+            $term->{args}[$i] = $self->{args}[$i]->refresh($term_aref);
         }
         return $term;
     }
     # else unbound
-    return _getvar($self, $term_aref, $self->varid);
+    return $self->_getvar($term_aref, $self->{varid});
 }
 
 sub _getvar {
@@ -526,7 +530,7 @@ sub _new_from_parser {
             }
 
             if (')' ne $parser->current) {
-                $parser->parseerror("Expecting: ')'");
+                $parser->parseerror("Expecting: ')'.  Got (@{[$parser->current]})");
             }
 
             $parser->advance;
@@ -536,7 +540,7 @@ sub _new_from_parser {
             $self->{arity} = $i;
         }
         else {
-            $self->{arity} = 0;
+           $self->{arity} = 0;
         }
     }
     elsif ($parser->current =~ /^[[:upper:]]$/) {
@@ -547,10 +551,7 @@ sub _new_from_parser {
         $self->{varname}   = $string;
     }
     elsif ($parser->current =~ /^[[:digit:]]$/) {
-        $self->{functor} = $parser->getnum;
-        $self->{arity}   = 0;
-        $self->{bound}   = 1;
-        $self->{deref}   = 0;
+        return Number->new($parser->getnum);
     }
     elsif ('[' eq $parser->current) {
         $parser->advance;
@@ -640,22 +641,14 @@ sub value {
     my $arg0 = $self->{args}[0]->value;
     my $arg1 = $self->{args}[1]->value;
 
-    return $arg0 + $arg1 if '+'   eq $functor;
-    return $arg0 - $arg1 if '-'   eq $functor;
-    return $arg0 * $arg1 if '*'   eq $functor;
-    return $arg0 / $arg1 if '/'   eq $functor;
-    return $arg0 % $arg1 if 'mod' eq $functor;
+    return $arg0 + $arg1 if 'plus'  eq $functor;
+    return $arg0 - $arg1 if 'minus' eq $functor;
+    return $arg0 * $arg1 if 'mult'  eq $functor;
+    return $arg0 / $arg1 if 'div'   eq $functor;
+    return $arg0 % $arg1 if 'mod'   eq $functor;
     require Carp;
     Carp::croak("Unknown operator ($functor)");
 }
-
-# public String dump() {
-#     return " - Term: " + functor + "/" + arity + ", "
-#         + (bound? "bound, " : "")
-#         + (deref? "ref, " : "")
-#         + varid ;
-# }
-
 
 sub dump {
     my $self = shift;

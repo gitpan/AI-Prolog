@@ -1,5 +1,5 @@
 package AI::Prolog::TermList;
-$REVISION = '$Id: TermList.pm,v 1.5 2005/02/20 18:27:55 ovid Exp $';
+$REVISION = '$Id: TermList.pm,v 1.6 2005/02/23 06:42:02 ovid Exp $';
 
 $VERSION = 0.02;
 
@@ -7,6 +7,7 @@ use strict;
 use warnings;
 
 use aliased 'AI::Prolog::Term';
+use aliased 'AI::Prolog::Term::Number';
 use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::TermList::Clause';
 use aliased 'AI::Prolog::TermList::Primitive';

@@ -1,13 +1,14 @@
 package AI::Prolog::Engine;
-$REVISION = '$Id: Engine.pm,v 1.5 2005/02/20 23:56:05 ovid Exp $';
+$REVISION = '$Id: Engine.pm,v 1.7 2005/02/24 07:16:24 ovid Exp $';
 $VERSION = '0.1';
 use strict;
 use warnings;
 
-use Clone qw/clone/;
+use Scalar::Util qw/looks_like_number/;
 
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::Term::Cut';
+use aliased 'AI::Prolog::Term::Number';
 use aliased 'AI::Prolog::TermList';
 use aliased 'AI::Prolog::TermList::Step';
 use aliased 'AI::Prolog::TermList::Primitive';
@@ -98,9 +99,17 @@ sub new {
             fail       :=  3. 
             assert(X)  :=  5.
             retract(X) :=  7.
+            listing    :=  8.
             print(X)   := 10.
+            println(X) := 11.
             nl         := 12. 
+            is(X,Y)    := 15.
+            gt(X,Y)    := 16.
+            lt(X,Y)    := 17.
+            ge(X,Y)    := 19.
+            le(X,Y)    := 20.
             var(X)     := 23.
+            gensym(X)  := 33.
             % commented out while we're still figuring out
             % what's wrong.
             % seq(X)   := 30.
@@ -201,14 +210,14 @@ sub _run {
             }
         }
         
-        unless ($self->_goal && $self->{_goal}->term) {
+        unless ($self->{_goal} && $self->{_goal}{term}) {
             require Carp;
             Carp::croak("Engine->run fatal error.  goal->term is null!");
         }
-        my $func  = $self->{_goal}->term->getfunctor;
-        my $arity = $self->{_goal}->term->getarity;
+        my $func  = $self->{_goal}{term}->getfunctor;
+        my $arity = $self->{_goal}{term}->getarity;
 
-        unless ($self->{_goal}->nextClause) {
+        unless ($self->{_goal}->{nextClause}) {
             warn "$func/$arity undefined!"; # this was wrapped in an "if trace"
             unless ($self->backtrack) {
                 return;
@@ -218,25 +227,25 @@ sub _run {
             }
         }
 
-        my $clause = $self->{_goal}->nextClause;
-        if (my $nextClause = $clause->nextClause) {
+        my $clause = $self->{_goal}->{nextClause};
+        if (my $nextClause = $clause->{nextClause}) {
             push @{$self->{_stack}} => $self->{_cp} = ChoicePoint->new(
                 $self->{_goal},
                 $nextClause,
             );
         }
         my $vars = [];
-        my $xxx  = $clause->term->refresh($vars);
+        my $xxx  = $clause->{term}->refresh($vars);
         if ($xxx->unify($self->{_goal}->term, $self->{_stack})) {
-            $clause = $clause->next;
+            $clause = $clause->{next};
             if ($clause && $clause->isa(Primitive)) {
-                if (! $self->doPrimitive($self->{_goal}->term, $clause)
+                if (! $self->doPrimitive($self->{_goal}->{term}, $clause)
                     && ! $self->backtrack) {
                     return;
                 }
             }
             elsif (! $clause) { # matching against fact
-                $self->{_goal} = $self->{_goal}->next;
+                $self->{_goal} = $self->{_goal}->{next};
                 if ($self->{_goal}) {
                     $self->{_goal}->lookupIn($self->{_db});
                 }
@@ -245,11 +254,11 @@ sub _run {
                 my ($p, $p1, $ptail); # termlists
                 for (my $i = 1; $clause; $i++) {
                     # will there only be one CUT?
-                    if ($clause->term eq Term->CUT) {
+                    if ($clause->{term} eq Term->CUT) {
                         $p = TermList->new(Cut->new($stackTop));
                     }
                     else {
-                        $p = TermList->new($clause->term->refresh($vars));
+                        $p = TermList->new($clause->{term}->refresh($vars));
                     }
                     if ($i == 1) {
                         $p1 = $ptail = $p;
@@ -258,9 +267,9 @@ sub _run {
                         $ptail->next($p);
                         $ptail = $p; # XXX ?
                     }
-                    $clause = $clause->next;
+                    $clause = $clause->{next};
                 }
-                $ptail->next($self->{_goal}->next);
+                $ptail->next($self->{_goal}->{next});
                 $self->{_goal} = $p1;
                 $self->{_goal}->lookupIn($self->{_db});
             }
@@ -276,19 +285,21 @@ sub _run {
 sub backtrack {
     my $self = shift;
     my $found;
-    if ($self->trace) {
+    if ($TRACE) {
         print " <<== Backtrack: \n";
     }
     BACKTRACK: {
         while (@{$self->{_stack}}) {
             my $o = pop @{$self->{_stack}};
 
-            if ($o->isa(Term)) {
+            if (UNIVERSAL::isa($o, Term)) {
                 $o->unbind;
             }
-            elsif ($o->isa(ChoicePoint)) {
-                $self->{_goal} = $o->goal;
-                $self->{_goal}->nextClause($o->clause);
+            elsif (UNIVERSAL::isa($o, ChoicePoint)) {
+                $self->{_goal} = $o->{goal};
+                # XXX This could be very dangerous if we accidentally try
+                # to assign a term to itself!  See ChoicePoint->nextClause
+                $self->{_goal}{nextClause} = $o->{clause};
                 $found = 1;
                 last BACKTRACK;
             } # elsif integer, iterative deepening
@@ -388,23 +399,99 @@ $PRIMITIVES[7] = sub { # retract(X)
     CONTINUE;
 };
 
+$PRIMITIVES[8] = sub { # listing
+    my $self = shift;
+    $self->{_db}->dump(0);
+    CONTINUE;
+};
+
 $PRIMITIVES[10] = sub { # print()
     my ($self, $term, $c) = @_;
     _print($term->getarg(0)->to_string);
     CONTINUE;
 };
 
+$PRIMITIVES[11] = sub { # println()
+    my ($self, $term, $c) = @_;
+    _print($term->getarg(0)->to_string."\n");
+    CONTINUE;
+};
+
 $PRIMITIVES[12] = sub { _print("\n"); CONTINUE }; # nl
+
+$PRIMITIVES[15] = sub { # is(X,Y)
+    my ($self, $term, $c) = @_;
+    my $rhs = $term->getarg(0)->deref;
+    my $lhs = $term->getarg(1)->value;
+    if ($rhs->isBound) {
+        my $value = $rhs->value;
+        return FAIL unless looks_like_number($value);
+        return $value == $lhs;
+    }
+    $rhs->bind(Number->new($lhs));
+    push @{$self->{_stack}} => $rhs;
+    CONTINUE;
+};
+
+$PRIMITIVES[16] = sub { # gt(X,Y)
+    my ($self, $term) = @_;
+    return ($term->getarg(0)->value > $term->getarg(1)->value)
+        ? CONTINUE
+        : FAIL;
+};
+
+$PRIMITIVES[17] = sub { # lt(X,Y)
+    my ($self, $term) = @_;
+    return ($term->getarg(0)->value < $term->getarg(1)->value)
+        ? CONTINUE
+        : FAIL;
+};
+
+$PRIMITIVES[19] = sub { # ge(X,Y)
+    my ($self, $term) = @_;
+    return ($term->getarg(0)->value >= $term->getarg(1)->value)
+        ? CONTINUE
+        : FAIL;
+};
+
+$PRIMITIVES[20] = sub { # le(X,Y)
+    my ($self, $term) = @_;
+    return ($term->getarg(0)->value <= $term->getarg(1)->value)
+        ? CONTINUE
+        : FAIL;
+};
 
 $PRIMITIVES[23] = sub { # var(X).
     my ($self, $term, $c) = @_;
     return $term->getarg(0)->bound()? FAIL : CONTINUE;
 };
 
+# plus(X,Y)  := 25.
+# minux(X,Y) := 26.
+# mult(X,Y)  := 27.
+# div(X,Y)   := 28.
+# mod(X,Y)   := 29.
+
+$PRIMITIVES[25] = sub { # plus(X,Y)
+    my ($self, $term) = @_;
+    return ($term->getarg(0)->value <= $term->getarg(1)->value)
+        ? CONTINUE
+        : FAIL;
+};
+
 $PRIMITIVES[30] = sub { # seq(X)
     my ($self, $term, $c) = @_;
     $self->_splice_goal_list( $term );
     CONTINUE;
+};
+
+my $gensymInt = 0;
+$PRIMITIVES[33] = sub { # gemsym(X)
+    my ($self, $term, $c) = @_;
+    my $t2 = Term->new('v' . $gensymInt++, 0);
+    return $t2->unify($term->getarg(0), $self->{_stack})
+        ? CONTINUE
+        : FAIL;
 };
 
 sub doPrimitive { # returns false if fails

@@ -1,14 +1,21 @@
 #!/usr/bin/perl
-# '$Id: 70builtins.t,v 1.5 2005/02/20 23:56:05 ovid Exp $';
+# '$Id: 70builtins.t,v 1.6 2005/02/23 06:42:02 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 33;
+use Test::More tests => 35;
 #use Test::More qw/no_plan/;
 use Test::MockModule;
 use Clone qw/clone/;
 use Test::Differences;
 
+BEGIN
+{
+    chdir 't' if -d 't';
+    unshift @INC => '../lib';
+}
 use aliased 'AI::Prolog';
+use aliased 'AI::Prolog::Engine';
+use aliased 'AI::Prolog::KnowledgeBase';
 
 my $database = <<'END_PROLOG';
 thief(badguy).
@@ -20,14 +27,13 @@ q(X) :- call(steals(badguy,X)).
 valuable(gold).
 valuable(rubies).
 END_PROLOG
-AI::Prolog::Engine->formatted(1);
-#AI::Prolog::Engine->trace(1);
+Engine->formatted(1);
 my $prolog = Prolog->new($database);
 $prolog->query("p(ovid)");
 is $prolog->results, 'p(ovid)', 'call(X) should behave correctly';
 
 #
-# I think it's failing because the call contains and if and
+# I think it's failing because the call contains an if and
 # if is defined in terms of once() and once is defined with
 # a cut and I don't quite have the cut correct
 #
@@ -56,7 +62,7 @@ is $prolog->results, 'steals(ovid,nothing)',
     '... and it should call Z if X cannot be satisfied';
 ok ! $prolog->results, '... and it should only provide correct results';
 
-my $faux_engine = Test::MockModule->new(AI::Prolog::Engine);
+my $faux_engine = Test::MockModule->new(Engine);
 my @stdout;
 $faux_engine->mock(_print => sub { push @stdout => @_ });
 
@@ -96,6 +102,12 @@ ok ! $prolog->results, '... but it should fail if none of its goals can succeed'
 $prolog->query("print(badguy).");
 $prolog->results;
 is_deeply \@stdout, ["badguy"], "print/1 should print what we give it.";
+
+@stdout = ();
+$prolog->query("println(badguy).");
+$prolog->results;
+is_deeply \@stdout, ["badguy\n"], 
+    "println/1 should print what we give it, but with a newline at the end.";
 
 @stdout = ();
 $prolog->query("if(steals(ovid,X),print(X),print(false)).");
@@ -152,70 +164,13 @@ $prolog->query('test_var(ovid, Y)');
 is $prolog->results, 'test_var(ovid,not_var)',
     '... and var(ovid) should evaluate to not true';
 
-__END__
-#
-# Math
-#
-
-AI::Prolog::Engine->formatted(1);
-my $prolog = Prolog->new(<<'END_PROLOG');
-value(rubies, 100).
-value(paper, 1).
-thief(badguy).
-steals(PERP, STUFF) :-
-    value(STUFF, DOLLARS),
-    gt(DOLLARS, 50).
-END_PROLOG
-
-$prolog->query('gt(4,3)');
-is $prolog->results, 'gt(4,3)',
-    'gt(X,Y) should succeed if the first argument > the second argument.';
-
-$prolog->query('gt(3,34)');
-ok ! $prolog->results,
-    '... and it should fail if the first argument < the second argument.';
-
-$prolog->query('gt(3,3)');
-ok ! $prolog->results,
-    '... and it should fail if the first argument = the second argument.';
-    
-$prolog->query('steals(badguy, X)');
-is $prolog->results, 'steals(badguy,rubies)',
-    '... and it should succeed as part of a complicated query';
-ok ! $prolog->results, '... but it should not return more than the correct results';
-
-$prolog->query('ge(4,3)');
-is $prolog->results, 'ge(4,3)',
-    'ge(X,Y) should succeed if the first argument > the second argument.';
-
-$prolog->query('ge(3,34)');
-ok ! $prolog->results,
-    '... and it should fail if the first argument < the second argument.';
-
-$prolog->query('ge(3,3)');
-is $prolog->results, 'ge(3,3)',
-    '... and it should succeed if the first argument = the second argument.';
-    
-$prolog->query('lt(3,4)');
-is $prolog->results, 'lt(3,4)',
-    'lt(X,Y) should succeed if the first argument < the second argument.';
-
-$prolog->query('lt(34,3)');
-ok ! $prolog->results,
-    '... and it should fail if the first argument < the second argument.';
-
-$prolog->query('lt(3,3)');
-ok ! $prolog->results,
-    '... and it should fail if the first argument = the second argument.';
-
-$prolog->query('le(3,4)');
-is $prolog->results, 'le(3,4)',
-    'le(X,Y) should succeed if the first argument < the second argument.';
-
-$prolog->query('le(34,3)');
-ok ! $prolog->results,
-    '... and it should fail if the first argument < the second argument.';
-
-$prolog->query('le(3,3)');
-is $prolog->results, 'le(3,3)',
-    '... and it should succeed if the first argument = the second argument.';
+{
+    my $faux_kb = Test::MockModule->new(KnowledgeBase);
+    my @stdout;
+    $faux_kb->mock(_print => sub { push @stdout => @_ });
+    $prolog->query('listing.');
+    $prolog->results;
+    my $results = join ''=> @stdout;
+    my $count = ($results =~ s/(\d+\.\s+\w+\/\d+:)//g);
+    ok $count, 'listing should display a listing of the database';
+}
