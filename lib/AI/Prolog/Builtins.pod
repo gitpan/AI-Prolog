@@ -4,7 +4,7 @@ AI::Prolog::Builtins - Builtin predicates that AI::Prolog supports
 
 =head1 REVISION
 
- $Id: Builtins.pod,v 1.2 2005/02/20 18:27:55 ovid Exp $
+ $Id: Builtins.pod,v 1.3 2005/02/20 23:56:05 ovid Exp $
 
 =head1 GRAMMAR
 
@@ -21,6 +21,7 @@ The language is given by the following grammar;
                  | if(Term , Term , Term) | or(Term , Term ) 
                  | not(Term) | call(Term) | once(Term)
                  | assert(Term) | retract(Term) | !
+                 | var(Term)
  Number    ::= Digit | Digit Number
  Digit     ::= 0 | ... | 9
  AtomName  ::= LowerCase NameChars
@@ -133,6 +134,10 @@ Remove facts from the database.  You cannot remove rules.  This may change in
 the future.  See C<assert(X)>.
 
  retract(loves(ovid,java)).
+
+=item * C<var(X)>.
+
+Succeeds if X is an unbound variable.  Otherwise, this goal fails.
 
 =back
 

@@ -1,8 +1,8 @@
 #!/usr/bin/perl
-# '$Id: 70builtins.t,v 1.4 2005/02/13 21:01:02 ovid Exp $';
+# '$Id: 70builtins.t,v 1.5 2005/02/20 23:56:05 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 30;
+use Test::More tests => 33;
 #use Test::More qw/no_plan/;
 use Test::MockModule;
 use Clone qw/clone/;
@@ -138,6 +138,20 @@ $prolog->query('append(X,Y,[a,b,c,d])');
 is $prolog->results, 'append([],[a,b,c,d],[a,b,c,d])',
     '... and it should return the correct results';
 ok ! $prolog->results, '... and halt backtracking appropriately';
+
+$prolog = Prolog->new(<<'END_PROLOG');
+test_var(VAR,X) :-
+  if(var(VAR), eq(X,is_var), eq(X,not_var)).
+END_PROLOG
+$prolog->query('test_var(X, Y)');
+is $prolog->results, 'test_var(_0,is_var)', 'var(X) should evaluate to true';
+$prolog->query('test_var(42, Y)');
+is $prolog->results, 'test_var(42,not_var)',
+    '... and var(42) should evaluate to not true';
+$prolog->query('test_var(ovid, Y)');
+is $prolog->results, 'test_var(ovid,not_var)',
+    '... and var(ovid) should evaluate to not true';
+
 __END__
 #
 # Math
@@ -205,5 +219,3 @@ ok ! $prolog->results,
 $prolog->query('le(3,3)');
 is $prolog->results, 'le(3,3)',
     '... and it should succeed if the first argument = the second argument.';
-
-__END__

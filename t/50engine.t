@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 50engine.t,v 1.4 2005/02/13 21:01:02 ovid Exp $';
+# '$Id: 50engine.t,v 1.5 2005/02/20 23:56:05 ovid Exp $';
 use warnings;
 use strict;
 use Test::More tests => 35;
@@ -55,6 +55,7 @@ isa_ok $engine, $CLASS, '... and the object it returns';
     print/1
     retract/1
     true/0
+    var/1
     wprologcase/3
     wprologtest/2
 };

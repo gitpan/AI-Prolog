@@ -1,5 +1,5 @@
 package AI::Prolog::Engine;
-$REVISION = '$Id: Engine.pm,v 1.4 2005/02/13 21:01:02 ovid Exp $';
+$REVISION = '$Id: Engine.pm,v 1.5 2005/02/20 23:56:05 ovid Exp $';
 $VERSION = '0.1';
 use strict;
 use warnings;
@@ -77,10 +77,12 @@ sub new {
         _retractClause => undef,
     } => $class;
 
+    # to add a new primitive, use the binding operator (:=) to assign a unique
+    # index to the primitive and add the corresponding definition to
+    # @PRIMITIVES.
     eval {
         $self->{_db} = Parser->consult(<<'        END_PROG', $prog);
             eq(X,X).
-            fail :- eq(c,d). 
             if(X,Y,Z) :- once(wprologtest(X,R)) , wprologcase(R,Y,Z).
             wprologtest(X,yes) :- call(X). wprologtest(X,no). 
             wprologcase(yes,X,Y) :- call(X). 
@@ -93,10 +95,12 @@ sub new {
             % := operator.
             !          :=  1.
             call(X)    :=  2. 
-            assert(X ) :=  5.
+            fail       :=  3. 
+            assert(X)  :=  5.
             retract(X) :=  7.
             print(X)   := 10.
             nl         := 12. 
+            var(X)     := 23.
             % commented out while we're still figuring out
             % what's wrong.
             % seq(X)   := 30.
@@ -347,6 +351,7 @@ sub _splice_goal_list {
 
 use constant CONTINUE => 1;
 use constant RETURN   => 2;
+use constant FAIL     => ();
 my @PRIMITIVES; # we'll fix this later
 
 $PRIMITIVES[1] = sub { # ! (cut)
@@ -355,12 +360,16 @@ $PRIMITIVES[1] = sub { # ! (cut)
     CONTINUE;
 };
 
-$PRIMITIVES[2] = sub { 
+$PRIMITIVES[2] = sub {  # call(X)
     my ($self, $term, $c) = @_;
     $self->{_goal} = TermList->new($term->getarg(0), $self->{_goal}->next);
     $self->{_goal}->resolve($self->{_db});
     RETURN;
-}; # call(X)
+};
+
+$PRIMITIVES[3] = sub { # fail
+    FAIL;
+};
 
 $PRIMITIVES[5] = sub { # assert(X)
     my ($self, $term, $c) = @_;
@@ -373,7 +382,7 @@ $PRIMITIVES[7] = sub { # retract(X)
     my $retract = $self->{_db}->retract($term->getarg(0), $self->{_stack});
     unless ($retract) {
         $self->backtrack;
-        return;
+        FAIL;
     }
     $self->{_cp}->clause($self->{_retractClause});
     CONTINUE;
@@ -384,7 +393,13 @@ $PRIMITIVES[10] = sub { # print()
     _print($term->getarg(0)->to_string);
     CONTINUE;
 };
+
 $PRIMITIVES[12] = sub { _print("\n"); CONTINUE }; # nl
+
+$PRIMITIVES[23] = sub { # var(X).
+    my ($self, $term, $c) = @_;
+    return $term->getarg(0)->bound()? FAIL : CONTINUE;
+};
 
 $PRIMITIVES[30] = sub { # seq(X)
     my ($self, $term, $c) = @_;

@@ -24,6 +24,10 @@ make_schedule([course(Teacher,Time,Room)|Rest], N) :-
     classtime(Time).
 END_PROLOG
 
+# note:  the other stuff in this example is part of a schedule
+# demo that I'll be writing after a few more predicates
+# are added
+
 AI::Prolog::Engine->formatted(1);
 $prolog->query('classroom(X).');
 

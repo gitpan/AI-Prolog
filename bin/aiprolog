@@ -4,7 +4,7 @@ use strict;
 use Pod::Usage 1.12;
 use aliased 'AI::Prolog';
 AI::Prolog::Engine->formatted(1);
-AI::Prolog::Engine->trace(1);
+#AI::Prolog::Engine->trace(1);
 use lib '../lib';
 
 my $file    = shift;
