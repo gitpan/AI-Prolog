@@ -4,6 +4,7 @@ use strict;
 use Pod::Usage 1.12;
 use aliased 'AI::Prolog';
 AI::Prolog::Engine->formatted(1);
+AI::Prolog::Engine->trace(1);
 use lib '../lib';
 
 my $file    = shift;
@@ -15,7 +16,7 @@ if ($file) {
 my $prolog  = Prolog->new($program);
 my $version = Prolog->VERSION;
 
-print "Welcome to AI::Prolog v $version\n\n";
+print "Welcome to AI::Prolog v $version\n\nType '?' for help.";
 
 my $MORE    = 1;
 my $COMMAND = qr/^%\s*/;

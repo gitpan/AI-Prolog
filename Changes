@@ -1,5 +1,15 @@
 Revision history for Perl extension AI::Prolog.
 
+0.06  Sun Feb 20
+      Added tests for the cut, number, and clause classes.
+
+      Added stub tests for step and primitive classes.
+
+      Ensured that all classes at least had stub documentation and added
+      POD tests.
+
+      Updated the TODO list in AI::Prolog.
+
 0.05  Sun Feb 13
       Put the database into its own class.
 

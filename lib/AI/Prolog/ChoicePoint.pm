@@ -1,5 +1,5 @@
 package AI::Prolog::ChoicePoint;
-$REVISION = '$Id: ChoicePoint.pm,v 1.4 2005/02/13 21:01:02 ovid Exp $';
+$REVISION = '$Id: ChoicePoint.pm,v 1.5 2005/02/20 18:27:55 ovid Exp $';
 
 $VERSION = '0.02';
 use strict;
@@ -27,7 +27,7 @@ __END__
 
 =head1 NAME
 
-AI::Prolog::ChoicePoint - Create a choicepoint object for the Engine..
+AI::Prolog::ChoicePoint - Create a choicepoint object for the Engine.
 
 =head1 SYNOPSIS
 
@@ -42,9 +42,17 @@ there are plenty of comments sprinkled through the code.
 
 =head1 SEE ALSO
 
+L<AI::Prolog>
+
+L<AI::Prolog::Introduction>
+
+L<AI::Prolog::Builtins>
+
 W-Prolog:  L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>
 
-Michael BartE<225>k's online guide to programming Prolog:
+X-Prolog:  L<http://www.iro.umontreal.ca/~vaucher/XProlog/>
+
+Roman BartE<225>k's online guide to programming Prolog:
 L<http://kti.ms.mff.cuni.cz/~bartak/prolog/index.html>
 
 =head1 AUTHOR
@@ -52,10 +60,6 @@ L<http://kti.ms.mff.cuni.cz/~bartak/prolog/index.html>
 Curtis "Ovid" Poe, E<lt>moc tod oohay ta eop_divo_sitrucE<gt>
 
 Reverse the name to email me.
-
-This work is based on W-Prolog, L<http://goanna.cs.rmit.edu.au/~winikoff/wp/>,
-by Dr. Michael Winikoff.  Many thanks to Dr. Winikoff for granting me
-permission to port this.
 
 =head1 COPYRIGHT AND LICENSE
 

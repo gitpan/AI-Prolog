@@ -1,5 +1,5 @@
 package AI::Prolog::TermList;
-$REVISION = '$Id: TermList.pm,v 1.4 2005/02/13 21:01:02 ovid Exp $';
+$REVISION = '$Id: TermList.pm,v 1.5 2005/02/20 18:27:55 ovid Exp $';
 
 $VERSION = 0.02;
 
@@ -139,28 +139,6 @@ sub nextClause {
     return $self->{nextClause};
 }
 
-=for java
-
-    // XXX will we need this?
-    public String toString()
-    {
-        int i=0;
-        String s; TermList tl;
-        s = new String("[" + term.toString());
-        tl = next;
-        while (tl != null && ++i < 3) {
-            s = s + ", " + tl.term.toString();
-            tl = tl.next;
-        }
-        if(tl!=null) s += ",....";
-        s += "]";
-
-        return s ;
-    }
-
-
-=cut
-
 sub to_string {
     my $self = shift;
     my $to_string = "[" . $self->term->to_string;
@@ -171,21 +149,6 @@ sub to_string {
     }
     return "$to_string]";
 }
-
-=for java
-
-   public void resolve(KnowledgeBase db)
-    {
-        nextClause = (Clause) db.get( term.getfunctor()
-                                      + "/" + term.getarity() );
-    }
-    public void lookupIn(KnowledgeBase db)
-    {
-        nextClause = (Clause) db.get( term.getfunctor()
-                                      + "/" + term.getarity() );
-    }
-
-=cut
 
 sub resolve {
     my ($self, $kb) = @_;
@@ -202,25 +165,6 @@ sub lookupIn {
         $self->{term}->getarity;
     $self->nextClause($kb->get($key));
 }
-
-#sub resolve {
-#    my ($self, $db) = @_;
-#    unless (@{$self->definer}) {
-#        $self->{numclauses} = 0;
-#        $self->{numclauses}++ 
-#            while exists $db->{$self->{term}->getfunctor."/".$self->{term}->getarity."-".(1 + $self->{numclauses})};
-#
-#        $self->{definer} = [];
-#
-#        for my $i (1 .. $self->{numclauses}) { # start numbering at one?
-#            $self->{definer}[$i] = $db->{$self->{term}->getfunctor."/".$self->term->getarity."-$i"};
-#        }
-#
-#        if ($self->next) {
-#            $self->next->resolve($db);
-#        }
-#    }
-#}
 
 1;
 

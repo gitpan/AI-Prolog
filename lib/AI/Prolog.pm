@@ -1,6 +1,6 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.6 2005/02/13 21:01:02 ovid Exp $';
-$VERSION  = '0.5';
+$REVISION = '$Id: Prolog.pm,v 1.7 2005/02/20 18:27:55 ovid Exp $';
+$VERSION  = '0.6';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -299,6 +299,50 @@ See L<AI::Prolog::Builtins|AI::Prolog::Builtins> and
 L<AI::Prolog::Engine|AI::Prolog::Engine> for known bugs and limitations.  Let
 me know if (when) you find them.  See the built-ins TODO list before that,
 though.
+
+=head1 TODO
+
+=over 4
+
+=item * Find the C<HEAD|TAIL> bug.
+
+See L<BUGS>
+
+=item * Fix infinite loop.
+
+ perl examples/path.pl 3
+
+That never returns or I haven't run it long enough.
+
+=item * Math.
+
+=item * Support for more builtins.
+
+=item * Performance improvements.
+
+I have a number of ideas for this, but it's pretty low-priority until things
+are stabilized.
+
+=item * Anonymous variables.
+
+ father(Person, _). % is Person a father of *anyone*?
+
+We can't use the underscore.  We have to make up a dummy variable and use it
+only once.
+
+ father(Person, Dummy1).
+
+Ugh.
+
+=item * Add "sugar" interface.
+
+=item * Better docs.
+
+=item * Tutorial.
+
+=item * Data structure cookbook.
+
+=back
 
 =head1 EXPORT
 

@@ -4,7 +4,7 @@ AI::Prolog::Introduction - The what and the why of logic programming.
 
 =head1 REVISION
 
- $Id: Introduction.pod,v 1.1 2005/02/13 20:59:46 ovid Exp $
+ $Id: Introduction.pod,v 1.2 2005/02/20 18:27:55 ovid Exp $
 
 =head1 RATIONALE
 

@@ -4,7 +4,7 @@ AI::Prolog::Builtins - Builtin predicates that AI::Prolog supports
 
 =head1 REVISION
 
- $Id: Builtins.pod,v 1.1 2005/02/13 20:59:46 ovid Exp $
+ $Id: Builtins.pod,v 1.2 2005/02/20 18:27:55 ovid Exp $
 
 =head1 GRAMMAR
 
@@ -154,7 +154,7 @@ Use C<eq(X,Y)> and C<not(eq(X,Y))> instead.
 There are many things on this list.  The core functionality is there, but I do
 want you to be aware of what's coming.
 
-=over *
+=over 4
 
 =item * Anonymous variables
 
