@@ -1,5 +1,10 @@
 Revision history for Perl extension AI::Prolog.
 
+0.03  Sun Jan 23
+      Added tests for built-in predicates.
+      Added query() function to AI::Logic::Engine to allow
+      successive queries without a new boostrap.
+
 0.02  Sun Jan 23
       First public release of AI::Prolog.
 

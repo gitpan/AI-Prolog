@@ -1,6 +1,6 @@
 package AI::Prolog;
 $REVISION = '$Id: Prolog.pm,v 1.2 2005/01/23 20:23:14 ovid Exp $';
-$VERSION  = '0.02';
+$VERSION  = '0.03';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -29,6 +29,12 @@ AI::Prolog - Perl extension for logic programming.
 
  print "Which lists append to form a known list?\n";
  print "'append(X,Y,[a,b,c,d]).'\n";
+ while (my $result = $engine->results) {
+     print "$result\n";
+ }
+
+ $query = Term->new("append(X, [c,d], [a,b,c,d]).");
+ $engine->query($query); # don't reload the engine if you can help it
  while (my $result = $engine->results) {
      print "$result\n";
  }

@@ -78,4 +78,10 @@ ok ! defined $engine->results,
 
 my $bootstrapped_db = clone($database);
 
-#eq_or_diff $database, $bootstrapped_db, ';;;';
+$query = Term->new('append(X,[d],[a,b,c,d]).');
+can_ok $engine, 'query';
+$engine->query($query);
+is $engine->results,'append([a,b,c],[d],[a,b,c,d])',
+    '... and it should let us issue a new query against the same db';
+ok ! $engine->results,
+    '... and it should not return spurious results';

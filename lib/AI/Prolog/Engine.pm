@@ -4,7 +4,7 @@ $VERSION = '0.01';
 use strict;
 use warnings;
 
-use Time::HiRes qw/gettimeofday/;
+use Clone qw/clone/;
 
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::TermList';
@@ -76,13 +76,26 @@ sub new {
     return $self;
 }
 
+sub query {
+    my ($self, $query)   = @_;
+    $self->{_stack}      = [];
+    $self->{_run_called} = undef;
+    $self->{_goal}       = TermList->new($query, undef);
+    $self->{_call}       = $query;
+    Term->internalparse(0);
+    $self->{_goal}->resolve($self->{_db});
+    $self->{_failgoal}   = TermList->new(Term->new("fail",0), undef);
+    $self->{_failgoal}->resolve($self->{_db});
+    return $self;
+}
+
 sub _stack    { shift->{_stack}    }
 sub _db       { shift->{_db}       }
 sub _goal     { shift->{_goal}     }
 sub _call     { shift->{_call}     }
 sub _failgoal { shift->{_failgoal} }
 
-sub dump {
+sub _dump {
     my ($self, $clausenum) = @_;
     if ($self->trace) {
         warn "Goal: " . $self->{_goal}->to_string . " clausenum = $clausenum\n";
@@ -131,7 +144,7 @@ sub _run {
         }
         my $func  = $self->{_goal}->term->getfunctor;
         my $arity = $self->{_goal}->term->getarity;
-        $self->dump($clausenum);
+        $self->_dump($clausenum);
 
         # if the goal is not a system predicate
         unless ('_' eq substr $func => 0, 1) {
@@ -209,11 +222,11 @@ sub _run {
         }
         # looks like it's a system predicate
         elsif ('_print' eq $func && 1 == $arity) {
-            print $self->{_goal}->term->getarg(0)->to_string;
+            _print($self->{_goal}->term->getarg(0)->to_string);
             $self->{_goal} = $self->{_goal}->next;
         }
         elsif ('_nl' eq $func && ! $arity) {
-            print "\n";
+            _print("\n");
             $self->{_goal} = $self->_goal->next;
         }
         elsif ('_call' eq $func && 1 == $arity) {
@@ -251,13 +264,17 @@ sub _run {
     }       
 }
 
+sub _print { # convenient testing hook
+    print @_;
+}
+
 1;
 
 __END__
 
 =head1 NAME
 
-AI::Prolog::End - Run queries against a Prolog database.
+AI::Prolog::Engine - Run queries against a Prolog database.
 
 =head1 SYNOPSIS
 
@@ -268,13 +285,66 @@ AI::Prolog::End - Run queries against a Prolog database.
 
 =head1 DESCRIPTION
 
-See L<AI::Prolog|AI::Prolog> for more information.  If you must know more,
-there are plenty of comments sprinkled through the code.
-
-If you look through the code, you will notice that it's appears to be
-based on the Warren Abstract Machine (WAM).  This is pretty much a standard
-definition of a Prolog compiler.
+C<AI::Prolog::Engine> is a Warren Abstract Machine (WAM) based Prolog engine.
 
 The C<new()> function actually bootstraps some Prolog code onto your program to
 give you access to the built in predicates listed in the
 L<AI::Prolog|AI::Prolog> documentation.
+
+See L<AI::Prolog|AI::Prolog> for more information.
+
+=head1 CLASS METHODS
+
+=head2 C<new($query, $database)>
+
+This creates a new Prolog engine.  The first argument must be of type
+C<AI::Prolog::Term> and the second my be a database created by
+C<AI::Prolog::Parser::consult>.
+
+ my $database = Parser->consult($some_prolog_program);
+ my $query    = Term->new('steals(badguy, X).');
+ my $engine   = Engine->new($query, $database);
+ while (my $results = $engine->results) {
+    print $results, $/;
+ }
+
+=head2 C<trace($boolean)>
+
+Set this to a true value to turn on tracing.  This will trace through the engine's
+goal satisfaction process while it's running.  This is very slow.
+
+ Engine->trace(1); # turn on tracing
+ Engine->trace(0); # turn off tracing
+
+=head1 INSTANCE METHODS
+
+=head2 C<results()>
+
+This method will return the results from the last run query, one result at a time.
+It will return false when there are no more results.
+
+ while (my $results = $engine->results) {
+    print $results, $/;
+ }
+
+=head2 C<query($query)>
+
+If you already have an engine object instantiated, call the C<query()>
+method for subsequent queries.  Internally, when calling C<new()>, the
+engine bootstraps a set of Prolog predicates to provide the built ins.
+However, this process is slow.  Subsequent queries to the same engine
+with the C<query()> method can double the speed of your program.
+
+ 
+ my $engine   = Engine->new($query, $database);
+ while (my $results = $engine->results) {
+    print $results, $/;
+ }
+ $query = Term->new("steals(ovid, X).");
+ $engine->query($query);
+ while (my $results = $engine->results) {
+    print $results, $/;
+ }
+
+=cut
+

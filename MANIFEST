@@ -21,3 +21,4 @@ t/30termlist.t
 t/40parser.t
 t/50engine.t
 t/60aiprolog.t
+t/70builtins.t
