@@ -8,7 +8,8 @@ use warnings;
 sub new {
         #      Term  TermList
     my $class = shift;
-    return $class->SUPER::new(@_);
+    my $self = $class->SUPER::new(@_);
+    return $self;
 }
 
 sub to_string {

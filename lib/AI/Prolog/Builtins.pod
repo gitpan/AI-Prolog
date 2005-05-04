@@ -4,32 +4,26 @@ AI::Prolog::Builtins - Builtin predicates that AI::Prolog supports
 
 =head1 REVISION
 
- $Id: Builtins.pod,v 1.5 2005/02/24 07:16:24 ovid Exp $
+ $Id: Builtins.pod,v 1.7 2005/02/28 02:57:17 ovid Exp $
 
-=head1 GRAMMAR
+=head1 MATH
 
-The language is given by the following grammar;
+Math has been available in L<AI::Prolog> since version 0.62.  It is hoped that
+it is fairly robust, but it should be noted that it is implemented via
+predicates rather than operators.  This simplified the the implementation
+tremendously.
 
- Program   ::= Rule | Rule Program
- Query     ::= Term
+Number may be integers, floats, doubles, etc.  A number that starts with a minus
+sign (-) is considered negative.  No number may end in a decimal point as the
+period is interpreted as the end of a clause.  The following is therefore a 
+syntax error:
 
- Rule      ::= Term . | Term :- Terms .
- Terms     ::= Term   | Term , Terms
- Term      ::= Number | Variable | AtomName | AtomName(Terms)
-                 | [] | [Terms] | [Terms | Term]
-                 | print(Term) | println(Term) | nl | eq(Term , Term)
-                 | if(Term , Term , Term) | or(Term , Term ) 
-                 | not(Term) | call(Term) | once(Term)
-                 | assert(Term) | retract(Term) | !
-                 | var(Term) | listing | gt(X,Y) | ge(X,Y)
-                 | lt(X,Y) | le(X,Y) | plus(X,Y) | minus(X,Y)
-                 | mult(X,Y) | div(X,Y) | mod(X,Y) | is(X,Y)
- Number    ::= Digit | Digit Number
- Digit     ::= 0 | ... | 9
- AtomName  ::= LowerCase NameChars
- Variable  ::= UpperCase NameChars
- NameChars ::= NameChar | NameChar NameChars
- NameChar  ::= a | ... | z | A | ... | Z | Digit
+ is(X, plus(5, 7.)).
+
+Omit the period after the number or put a zero after it:
+
+ is(X, plus(5, 7)).
+ is(X, plus(5, 7.0)).
 
 =head2 Comments
 
@@ -101,6 +95,14 @@ Use with C<is(X,Y)>.
 
 Succeeds if C<X> and C<Y> are equal.
 
+=item * C<fail.>
+
+This goal always fails.  Useful when you've reached a condition you
+know should not succeed.
+
+  kill(Hero, Beast) :-
+    not(has_weapon(Hero)), fail.
+
 =item * C<ge(X,Y)>.
 
 Succeeds if both terms are bound and X >= Y.
@@ -167,6 +169,10 @@ Prints a newline.
 Succeeds if C<X> cannot be proven.  This is not negation as we're used to
 seeing it in procedural languages.
 
+=item * C<notrace.>
+
+Turns off tracing of Prolog's attempt to satisfy goals.
+
 =item * C<once(X)>
 
 Stop solving for C<X> if C<X> succeeds.  Defined as:
@@ -197,12 +203,26 @@ an underscore followed by the internal variable number (e.g., "_284").
 
 Same as C<print(Term)>, but automatically prints a newline at the end.
 
+=item * C<pow(X,Y)>.
+
+Succeeds if both terms are bound.  The value of the term is X ** Y 
+(X raised to the Y power).
+Use with C<is(X,Y)>.
+
 =item * C<retract(X)>.
 
 Remove facts from the database.  You cannot remove rules.  This may change in
 the future.  See C<assert(X)>.
 
  retract(loves(ovid,java)).
+
+=item * C<trace.>
+
+Turns on tracing of Prolog's attempt to satisfy goals.
+
+=item * C<true.>
+
+True goal.  Automatically succeeds.
 
 =item * C<var(X)>.
 

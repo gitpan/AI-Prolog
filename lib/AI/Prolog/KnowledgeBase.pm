@@ -1,5 +1,5 @@
 package AI::Prolog::KnowledgeBase;
-$REVISION = '$Id: KnowledgeBase.pm,v 1.2 2005/02/23 06:42:02 ovid Exp $';
+$REVISION = '$Id: KnowledgeBase.pm,v 1.3 2005/02/28 02:32:11 ovid Exp $';
 $VERSION = '0.02';
 use strict;
 use warnings;
@@ -54,7 +54,7 @@ sub consult {
     Parser->new(shift)->Program($self);
 }
 
-sub addPrimitive {
+sub add_primitive {
     my ($self, $clause) = @_;
     my $term  = $clause->term;
     my $index = sprintf "%s/%s" =>
@@ -62,10 +62,10 @@ sub addPrimitive {
         $term->getarity;
     my $c = $self->{ht}{$index};
     if ($c) {
-        while ($c->nextClause) {
-            $c = $c->nextClause;
+        while ($c->next_clause) {
+            $c = $c->next_clause;
         }
-        $c->nextClause($clause);
+        $c->next_clause($clause);
     }
     else {
         $self->{primitives}{$index} = 1;
@@ -73,7 +73,7 @@ sub addPrimitive {
     }
 }
 
-sub addClause {
+sub add_clause {
     my ($self, $clause) = @_;
     my $term = $clause->term;
     my $index = sprintf "%s/%s" =>
@@ -91,16 +91,16 @@ sub addClause {
     }
     else {
         my $c = $self->{ht}{$index};
-        while ($c->nextClause) {
-            $c = $c->nextClause;
+        while ($c->next_clause) {
+            $c = $c->next_clause;
         }
-        $c->nextClause($clause);
+        $c->next_clause($clause);
     }
 }
 
 sub assert {
     my ($self, $term) = @_;
-    $term = $term->cleanUp;
+    $term = $term->clean_up;
     # XXX whoops.  Need to check exact semantics in Term
     my $newC = Clause->new($term->deref,undef);
     
@@ -111,10 +111,10 @@ sub assert {
     }
     my $c = $self->{ht}{$index};
     if ($c) {
-        while ($c->nextClause) {
-            $c = $c->nextClause;
+        while ($c->next_clause) {
+            $c = $c->next_clause;
         }
-        $c->nextClause($newC);
+        $c->next_clause($newC);
     }
     else {
         $self->{ht}{$index} = $newC;
@@ -130,10 +130,10 @@ sub asserta {
         require Carp && Carp::carp("Trying to assert a primitive: $index");
         return;
     }
-    $term = $term->cleanUp;
+    $term = $term->clean_up;
     my $newC = Clause->new($term->deref, undef);
     my $c    = $self->{ht}{$index};
-    $newC->nextClause($c);
+    $newC->next_clause($c);
     $self->{ht}{$index} = $newC;
 }
 
@@ -157,13 +157,13 @@ sub retract {
 
         if ($xxx->unify($term, $stack)) {
             if ($cc) {
-                $cc->nextClause($c->nextClause);
+                $cc->next_clause($c->next_clause);
             }
-            elsif (! $c->nextClause) {
+            elsif (! $c->next_clause) {
                 delete $self->{ht}{$index};
             }
             else {
-                $self->{ht}{$index} = $c->nextClause;
+                $self->{ht}{$index} = $c->next_clause;
             }
             return 1;
         }
@@ -172,7 +172,7 @@ sub retract {
             $t->unbind;
         }
         $cc = $c;
-        $c  = $c->nextClause;
+        $c  = $c->next_clause;
     }
     return;
 }
@@ -199,10 +199,11 @@ sub get {
 sub set {
     my ($self, $term, $value) = @_;
     my $key = ref $term? $term->to_string : $term;
-    $self->{ht}{$key} = $value->cleanUp;
+    $self->{ht}{$key} = $value->clean_up;
 }
 
 sub _print {print @_}
+
 sub dump {
     my ($self, $full) = @_;
     my $i = 1;
@@ -216,7 +217,7 @@ sub dump {
                     _print(" :- " . $value->next->to_string);
                 }
                 _print(".\n");
-                $value = $value->nextClause;
+                $value = $value->next_clause;
             } while ($value);
         }
         else {
@@ -239,7 +240,7 @@ sub list {
             print " :- " . $head->next->to_string;
         }
         print ".\n";
-        $head = $head->nextClause;
+        $head = $head->next_clause;
     }
 }
 

@@ -6,8 +6,40 @@ use lib ('../lib/', 'lib/');
 
 use aliased 'AI::Prolog';
 my $logic = Prolog->new(thief_prog());
+print "Without trace ...\n";
 $logic->query('steals("Bad guy", STUFF, VICTIM)');
-Prolog->trace(1);
+while (my $results = $logic->results) {
+    printf "Bad guy steals %s from %s\n",
+        $results->STUFF, $results->VICTIM;
+}
+
+print <<"END_MESSAGE";
+
+The following will be a long trace of Prolog tries to satisfy the
+above goal.
+
+Hit Enter to begin.
+END_MESSAGE
+<STDIN>;
+
+$logic->do('trace.');
+$logic->query('steals("Bad guy", STUFF, VICTIM)');
+while (my $results = $logic->results) {
+    printf "Bad guy steals %s from %s\n",
+        $results->STUFF, $results->VICTIM;
+}
+
+print <<"END_MESSAGE";
+
+And we'll do it one more time, but this time calling notrace before
+the query.
+
+Hit Enter to begin.
+END_MESSAGE
+<STDIN>;
+
+$logic->do('notrace.');
+$logic->query('steals("Bad guy", STUFF, VICTIM)');
 while (my $results = $logic->results) {
     printf "Bad guy steals %s from %s\n",
         $results->STUFF, $results->VICTIM;

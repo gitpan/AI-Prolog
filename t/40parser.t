@@ -1,8 +1,8 @@
 #!/usr/bin/perl
-# '$Id: 40parser.t,v 1.3 2005/02/13 21:01:02 ovid Exp $';
+# '$Id: 40parser.t,v 1.4 2005/02/28 02:32:11 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 63;
+use Test::More tests => 71;
 #use Test::More 'no_plan';
 use Test::MockModule;
 
@@ -170,3 +170,27 @@ is $parser->current, ')',
 is $parser->_start, 38, '... and have the parser should start at the first quote';
 is $parser->_posn, 52, 
     '... and have the posn point to the first char after the last quote';
+
+#
+# really ensure that the parser can handle numbers
+#
+
+$parser = $CLASS->new('foo(32)');
+$parser->advance for 1 .. 4;
+is $parser->getnum, 32, 'getnum() should be able to handle positive integers';
+is $parser->current, ')', '... and the parser should point to the correct character';
+
+$parser = $CLASS->new('foo(-32)');
+$parser->advance for 1 .. 4;
+is $parser->getnum, -32, '... and negative integers';
+is $parser->current, ')', '... and the parser should point to the correct character';
+
+$parser = $CLASS->new('foo(.32)');
+$parser->advance for 1 .. 4;
+is $parser->getnum, '.32', '... it should handle leading decimal points';
+is $parser->current, ')', '... and the parser should point to the correct character';
+
+$parser = $CLASS->new('foo(-.32)');
+$parser->advance for 1 .. 4;
+is $parser->getnum, '-.32', '... and negative numbers with decimal points';
+is $parser->current, ')', '... and the parser should point to the correct character';

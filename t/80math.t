@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 80math.t,v 1.2 2005/02/24 07:16:24 ovid Exp $';
+# '$Id: 80math.t,v 1.4 2005/02/28 02:57:17 ovid Exp $';
 use warnings;
 use strict;
 #use Test::More tests => 33;
@@ -21,7 +21,6 @@ use aliased 'AI::Prolog::KnowledgeBase';
 #
 
 Engine->formatted(1);
-#Engine->trace(1);
 my $prolog = Prolog->new(<<'END_PROLOG');
 value(rubies, 100).
 value(paper, 1).
@@ -33,6 +32,15 @@ END_PROLOG
 
 $prolog->query('is(X,7)');
 is $prolog->results, 'is(7,7)', 'is/2 should be able to bind a term to a var';
+
+$prolog->query('is(X,-7)');
+is $prolog->results, 'is(-7,-7)', '... and it should handle negative numbers';
+
+$prolog->query('is(X,.7)');
+is $prolog->results, 'is(.7,.7)', '... and number which begin with decimal points';
+
+$prolog->query('is(X,-.7)');
+is $prolog->results, 'is(-.7,-.7)', '... and negative numbers with decimal points';
 
 $prolog->query('is(7,X)');
 eval {$prolog->results};
@@ -99,16 +107,31 @@ is $prolog->results, 'le(3,3)',
     '... and it should succeed if the first argument = the second argument.';
 
 $prolog->query('is(X,plus(3,4))');
-is $prolog->results, 'is(7,plus(3,4))', 'Basic addition should succeed';
+is $prolog->results, 'is(7,plus(3,4))', 'plus/2 should succeed';
+
+$prolog->query('is(X,plus(3,-4))');
+is $prolog->results, 'is(-1,plus(3,-4))', '... even with negative values';
+
+$prolog->query('is(X,plus(3,plus(-2,4)))');
+is $prolog->results, 'is(5,plus(3,plus(-2,4)))', '... or complicated math';
 
 $prolog->query('is(X,minus(3,4))');
-is $prolog->results, 'is(-1,minus(3,4))', 'Basic substraction should succeed';
+is $prolog->results, 'is(-1,minus(3,4))', 'minus/2 should succeed';
 
 $prolog->query('is(X,mult(3,4))');
-is $prolog->results, 'is(12,mult(3,4))', 'Basic multiplication should succeed';
+is $prolog->results, 'is(12,mult(3,4))', 'mult/2 should succeed';
 
 $prolog->query('is(X,div(12,3))');
-is $prolog->results, 'is(4,div(12,3))', 'Basic division should succeed';
+is $prolog->results, 'is(4,div(12,3))', 'div/2 should succeed';
 
 $prolog->query('is(X,mod(12,5))');
-is $prolog->results, 'is(2,mod(12,5))', 'Basic modulus should succeed';
+is $prolog->results, 'is(2,mod(12,5))', 'mod/2 should succeed';
+
+$prolog->query('is(X,pow(3,2))');
+is $prolog->results, 'is(9,pow(3,2))','pow/2 should succeed';
+
+$prolog->query('is(X,pow(16,.5))');
+is $prolog->results, 'is(4,pow(16,.5))','... even with a real exponent';
+
+$prolog->query('is(X,pow(16,-1))');
+is $prolog->results, 'is(0.0625,pow(16,-1))','... or a negative one';

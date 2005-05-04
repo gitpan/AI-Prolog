@@ -1,5 +1,5 @@
 package AI::Prolog::Engine;
-$REVISION = '$Id: Engine.pm,v 1.7 2005/02/24 07:16:24 ovid Exp $';
+$REVISION = '$Id: Engine.pm,v 1.9 2005/02/28 02:57:17 ovid Exp $';
 $VERSION = '0.1';
 use strict;
 use warnings;
@@ -26,14 +26,13 @@ use constant OnceMark => 'OnceMark';
 # $term The query to be executed
 
 # This governs whether tracing is done
-my $TRACE;
 sub trace {
-    my $class = shift;
+    my $self = shift;
     if (@_) {
-        $TRACE = shift;
-        return $class;
+        $self->{_trace} = shift;
+        return $self;
     }
-    return $TRACE;
+    return $self->{_trace};
 }
 
 my $FORMATTED = 1;
@@ -76,6 +75,7 @@ sub new {
         _run_called    => undef,
         _cp            => undef,
         _retractClause => undef,
+        _trace         => 0, # whether or not tracing is done
     } => $class;
 
     # to add a new primitive, use the binding operator (:=) to assign a unique
@@ -103,6 +103,8 @@ sub new {
             print(X)   := 10.
             println(X) := 11.
             nl         := 12. 
+            trace      := 13.
+            notrace    := 13.
             is(X,Y)    := 15.
             gt(X,Y)    := 16.
             lt(X,Y)    := 17.
@@ -150,11 +152,11 @@ sub _goal     { shift->{_goal}     }
 sub _call     { shift->{_call}     }
 sub _failgoal { shift->{_failgoal} }
 
-sub dumpGoal {
+sub dump_goal {
     my ($self) = @_;
     if ($self->{_goal}) {
-        print "\n= Goals: " . $self->{_goal}->to_string 
-            . "\n==> Try:  " .$self->{_goal}->nextClause->to_string."\n";
+        print "\n= Goals: "  .$self->{_goal}->to_string;
+        print "\n==> Try:  " .$self->{_goal}->next_clause->to_string."\n";
     }
     else {
         print "\n= Goals: null\n";
@@ -187,15 +189,15 @@ sub _run {
         if ($self->{_goal} && $self->{_goal}->isa(Step)) {
             $self->{_goal} = $self->{_goal}->next;
             if ($self->{_goal}) {
-                $self->{_goal}->lookupIn($self->{_db});
+                $self->{_goal}->resolve($self->{_db});
             }
             $self->{_step_flag} = 1;
             $self->trace(1);
         }
-        $self->dumpGoal if $TRACE;
+        $self->dump_goal if $self->{_trace};
         $self->step if $self->{_step_flag};
             
-        unless ($self->{_goal} && $self->{_goal}->nextClause) {
+        unless ($self->{_goal} && $self->{_goal}->next_clause) {
             # XXX This is handled very differently in XProlog
             # Damn.
             # we've succeeded.  return results
@@ -217,7 +219,7 @@ sub _run {
         my $func  = $self->{_goal}{term}->getfunctor;
         my $arity = $self->{_goal}{term}->getarity;
 
-        unless ($self->{_goal}->{nextClause}) {
+        unless ($self->{_goal}->{next_clause}) {
             warn "$func/$arity undefined!"; # this was wrapped in an "if trace"
             unless ($self->backtrack) {
                 return;
@@ -227,11 +229,11 @@ sub _run {
             }
         }
 
-        my $clause = $self->{_goal}->{nextClause};
-        if (my $nextClause = $clause->{nextClause}) {
+        my $clause = $self->{_goal}->{next_clause};
+        if (my $next_clause = $clause->{next_clause}) {
             push @{$self->{_stack}} => $self->{_cp} = ChoicePoint->new(
                 $self->{_goal},
-                $nextClause,
+                $next_clause,
             );
         }
         my $vars = [];
@@ -239,7 +241,7 @@ sub _run {
         if ($xxx->unify($self->{_goal}->term, $self->{_stack})) {
             $clause = $clause->{next};
             if ($clause && $clause->isa(Primitive)) {
-                if (! $self->doPrimitive($self->{_goal}->{term}, $clause)
+                if (! $self->do_primitive($self->{_goal}->{term}, $clause)
                     && ! $self->backtrack) {
                     return;
                 }
@@ -247,7 +249,7 @@ sub _run {
             elsif (! $clause) { # matching against fact
                 $self->{_goal} = $self->{_goal}->{next};
                 if ($self->{_goal}) {
-                    $self->{_goal}->lookupIn($self->{_db});
+                    $self->{_goal}->resolve($self->{_db});
                 }
             }
             else { # replace goal by clause body
@@ -271,7 +273,7 @@ sub _run {
                 }
                 $ptail->next($self->{_goal}->{next});
                 $self->{_goal} = $p1;
-                $self->{_goal}->lookupIn($self->{_db});
+                $self->{_goal}->resolve($self->{_db});
             }
         }
         else { # unify failed.  Must backtrack
@@ -285,27 +287,25 @@ sub _run {
 sub backtrack {
     my $self = shift;
     my $found;
-    if ($TRACE) {
+    if ($self->{_trace}) {
         print " <<== Backtrack: \n";
     }
-    BACKTRACK: {
-        while (@{$self->{_stack}}) {
-            my $o = pop @{$self->{_stack}};
+    while (@{$self->{_stack}}) {
+        my $o = pop @{$self->{_stack}};
 
-            if (UNIVERSAL::isa($o, Term)) {
-                $o->unbind;
-            }
-            elsif (UNIVERSAL::isa($o, ChoicePoint)) {
-                $self->{_goal} = $o->{goal};
-                # XXX This could be very dangerous if we accidentally try
-                # to assign a term to itself!  See ChoicePoint->nextClause
-                $self->{_goal}{nextClause} = $o->{clause};
-                $found = 1;
-                last BACKTRACK;
-            } # elsif integer, iterative deepening
-            # not implemented yet
+        if (UNIVERSAL::isa($o, Term)) {
+            $o->unbind;
         }
-    } # end BACKTRACK
+        elsif (UNIVERSAL::isa($o, ChoicePoint)) {
+            $self->{_goal} = $o->{goal};
+            # XXX This could be very dangerous if we accidentally try
+            # to assign a term to itself!  See ChoicePoint->next_clause
+            $self->{_goal}{next_clause} = $o->{clause};
+            $found = 1;
+            last;
+        } # elsif integer, iterative deepening
+        # not implemented yet
+    }
     # stack is empty.  We have not found a choice point.
     # this means we have failed.
     return $found;
@@ -315,7 +315,7 @@ sub _print { # convenient testing hook
     print @_;
 }
         
-sub removeChoices {
+sub _remove_choices {
     # this implements the cut operator
     my ($self, $varid) = @_;
     my @stack;
@@ -357,7 +357,7 @@ sub _splice_goal_list {
     }
     $ptail->next($self->{_goal}->next);
     $self->{_goal} = $p1;
-    $self->{_goal}->lookupIn($self->{_db});
+    $self->{_goal}->resolve($self->{_db});
 }
 
 use constant CONTINUE => 1;
@@ -367,7 +367,7 @@ my @PRIMITIVES; # we'll fix this later
 
 $PRIMITIVES[1] = sub { # ! (cut)
     my ($self, $term, $c) = @_;
-    $self->removeChoices( $term->varid );
+    _remove_choices( $self, $term->varid );
     CONTINUE;
 };
 
@@ -390,10 +390,9 @@ $PRIMITIVES[5] = sub { # assert(X)
 
 $PRIMITIVES[7] = sub { # retract(X)
     my ($self, $term, $c) = @_;
-    my $retract = $self->{_db}->retract($term->getarg(0), $self->{_stack});
-    unless ($retract) {
+    unless ($self->{_db}->retract($term->getarg(0), $self->{_stack})) {
         $self->backtrack;
-        FAIL;
+        return FAIL;
     }
     $self->{_cp}->clause($self->{_retractClause});
     CONTINUE;
@@ -419,11 +418,18 @@ $PRIMITIVES[11] = sub { # println()
 
 $PRIMITIVES[12] = sub { _print("\n"); CONTINUE }; # nl
 
+$PRIMITIVES[13] = sub { # trace. notrace.
+    my ($self, $term) = @_;
+    $self->{_trace} = $term->getfunctor eq 'trace';
+    _print("Trace " . ($self->{_trace}? "ON" : "OFF"));
+    CONTINUE;
+};
+
 $PRIMITIVES[15] = sub { # is(X,Y)
     my ($self, $term, $c) = @_;
     my $rhs = $term->getarg(0)->deref;
     my $lhs = $term->getarg(1)->value;
-    if ($rhs->isBound) {
+    if ($rhs->is_bound) {
         my $value = $rhs->value;
         return FAIL unless looks_like_number($value);
         return $value == $lhs;
@@ -472,13 +478,6 @@ $PRIMITIVES[23] = sub { # var(X).
 # div(X,Y)   := 28.
 # mod(X,Y)   := 29.
 
-$PRIMITIVES[25] = sub { # plus(X,Y)
-    my ($self, $term) = @_;
-    return ($term->getarg(0)->value <= $term->getarg(1)->value)
-        ? CONTINUE
-        : FAIL;
-};
-
 $PRIMITIVES[30] = sub { # seq(X)
     my ($self, $term, $c) = @_;
     $self->_splice_goal_list( $term );
@@ -494,7 +493,7 @@ $PRIMITIVES[33] = sub { # gemsym(X)
         : FAIL;
 };
 
-sub doPrimitive { # returns false if fails
+sub do_primitive { # returns false if fails
     my ($self, $term, $c) = @_;
     my $primitive = $PRIMITIVES[ $c->ID ]
         or die sprintf "Cannot find primitive for %s (ID: %d)\n", $term->to_string, $c->ID;
@@ -502,7 +501,7 @@ sub doPrimitive { # returns false if fails
     return 1 if RETURN == $result;
     $self->{_goal} = $self->{_goal}->next;
     if ($self->{_goal}) {
-        $self->{_goal}->lookupIn($self->{_db});
+        $self->{_goal}->resolve($self->{_db});
     }
     return 1; 
 }

@@ -15,6 +15,7 @@ WriteMakefile(
         'Exporter::Tidy'    => 0.06,
         'Hash::AsObject'    => 0.05,
         'Pod::Usage'        => 1.12,
+        'Regexp::Common'    => 2.119,
         'Test::Differences' => 0.47,
         'Test::MockModule'  => 0.04,
         'Text::Balanced'    => 1.95,

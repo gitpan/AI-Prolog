@@ -1,5 +1,13 @@
 Revision history for Perl extension AI::Prolog.
 
+0.63
+      Allow parser to properly handle positive and negative numbers
+      and decimal points.
+      Added pow(X,Y).
+      Eliminated studlyCaps methods.
+      Added trace. and notrace.
+      Added a TODO test for a failing regression test.
+
 0.62  Fri Feb 25
       Added code to avoid bug in some Perl's where "undef" looks
       like a number.

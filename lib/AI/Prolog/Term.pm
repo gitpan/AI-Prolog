@@ -1,7 +1,7 @@
 package AI::Prolog::Term;
-$REVISION = '$Id: Term.pm,v 1.5 2005/02/24 07:16:24 ovid Exp $';
+$REVISION = '$Id: Term.pm,v 1.6 2005/02/28 02:32:11 ovid Exp $';
 
-$VERSION = '0.03';
+$VERSION = '0.05';
 use strict;
 use warnings;
 
@@ -53,17 +53,15 @@ sub new {
     my $class = CORE::ref $proto || $proto; # yes, I know what I'm doing
     return $class->_new_var unless @_;
     if (2 == @_) { # more common (performance)
-        return $class->_new_from_functor_and_arity(@_) unless 'ARRAY' eq CORE::ref $_[1];
-        return $class->_new_from_functor_and_array(@_) if     'ARRAY' eq CORE::ref $_[1];
+        return _new_from_functor_and_arity($class, @_) unless 'ARRAY' eq CORE::ref $_[1];
+        # XXX unused?
+        return _new_from_functor_and_array($class, @_) if     'ARRAY' eq CORE::ref $_[1];
     }
     elsif (1 == @_) {
         my $arg = shift;
-        return $class->_new_with_id($arg)     if ! CORE::ref $arg && $arg =~ /^[[:digit:]]+$/;
-        return $class->_new_from_string($arg) if ! CORE::ref $arg;
-        return $class->_new_from_parser($arg) if   CORE::ref $arg && $arg->isa(Parser);
-    }
-    elsif(3 == @_) {
-        return $class->_new_binop(@_);
+        return _new_with_id($class, $arg)     if ! CORE::ref $arg && $arg =~ /^[[:digit:]]+$/;
+        return _new_from_string($class, $arg) if ! CORE::ref $arg;
+        return _new_from_parser($class, $arg) if   CORE::ref $arg && $arg->isa(Parser);
     }
     require Carp;
     Carp::croak("Unknown arguments to Term->new");
@@ -72,7 +70,7 @@ sub new {
 sub _new_from_string {
     my ($class, $string) = @_;
     my $parsed = Parser->new($string);
-    return $class->_new_from_parser($parsed);
+    return _new_from_parser($class, $parsed);
 }
 
 sub _new_var {
@@ -84,7 +82,7 @@ sub _new_var {
         # if bound is false, $self is a reference to a free variable
         bound   => 0,
         varid   => $VARNUM++,
-        # if bound and dered are both true, $self is a reference to a ref
+        # if bound and deref are both true, $self is a reference to a ref
         deref   => 0,
         ref     => undef,
     } => $class;
@@ -99,7 +97,7 @@ sub _new_with_id {
         # if bound is false, $self is a reference to a free variable
         bound   => 0,
         varid   => $id,
-        # if bound and dered are both true, $self is a reference to a ref
+        # if bound and deref are both true, $self is a reference to a ref
         deref   => 0,
         ref     => undef,
     } => $class;
@@ -135,19 +133,129 @@ sub _new_from_functor_and_arity {
     } => $class;
 }
 
-sub _new_binop {
-    my ($class, $functor, $term1, $term2) = @_;
-    bless {
-        functor => $functor,
-        arity   => 2,
-        args    => [$term1, $term2],
+# This constructor is the simplest way to construct a term.  The term is given
+# in standard notation.
+# Example: my $term = Term->new(Parser->new("p(1,a(X,b))"));
+sub _new_from_parser {
+    my ($class, $parser) = @_;
+    my $self = bless {
+        functor => undef,
+        arity   => 0,
+        args    => [],
         # if bound is false, $self is a reference to a free variable
-        bound   => 1,
+        bound   => 0,
         varid   => undef, # XXX ??
         # if bound and deref are both true, $self is a reference to a ref
         deref   => 0,
         ref     => undef,
     } => $class;
+    my $ts   = [];
+    my $i    = 0;
+
+    $parser->skipspace; # otherwise we crash when we hit leading
+                        # spaces
+    if ($parser->current =~ /^[[:lower:]'"]$/) {
+        $self->{functor} = $parser->getname;
+        $self->{bound}   = 1;
+        $self->{deref}   = 0;
+
+        if ('(' eq $parser->current) {
+            $parser->advance;
+            $parser->skipspace;
+            $ts->[$i++] = $self->new($parser);
+            $parser->skipspace;
+
+            while (',' eq $parser->current) {
+                $parser->advance;
+                $parser->skipspace;
+                $ts->[$i++] = $self->new($parser);
+                $parser->skipspace;
+            }
+
+            if (')' ne $parser->current) {
+                $parser->parseerror("Expecting: ')'.  Got (@{[$parser->current]})");
+            }
+
+            $parser->advance;
+            $self->{args} = [];
+
+            $self->{args}[$_] = $ts->[$_] for 0 .. ($i -1);
+            $self->{arity} = $i;
+        }
+        else {
+           $self->{arity} = 0;
+        }
+    }
+    elsif ($parser->current =~ /^[[:upper:]]$/) {
+        $self->{bound}     = 1;
+        $self->{deref}     = 1;
+        my ($ref, $string) = $parser->getvar;
+        $self->{ref}       = $ref;
+        $self->{varname}   = $string;
+    }
+    elsif ($parser->current =~ /^[-.[:digit:]]$/) {
+        return Number->new($parser->getnum);
+    }
+    elsif ('[' eq $parser->current) {
+        $parser->advance;
+
+        if (']' eq $parser->current) {
+            $parser->advance;
+            $self->{functor} = NULL;
+            $self->{arity}   = 0;
+            $self->{bound}   = 1;
+            $self->{deref}   = 0;
+        }
+        else {
+            $parser->skipspace;
+            $ts->[$i++] = $self->new($parser);
+            $parser->skipspace;
+
+            while (',' eq $parser->current) {
+                $parser->advance;
+                $parser->skipspace;
+                $ts->[$i++] = $self->new($parser);
+                $parser->skipspace;
+            }
+
+            if ('|' eq $parser->current) {
+                $parser->advance;
+                $parser->skipspace;
+                $ts->[$i++] = $self->new($parser);
+                $parser->skipspace;
+            }
+            else {
+                $ts->[$i++] = $self->new(NULL, 0);
+            }
+
+            if (']' ne $parser->current) {
+                $parser->parseerror("Expecting ']'");
+            }
+
+            $parser->advance;
+            $self->{bound}   = 1;
+            $self->{deref}   = 0;
+            $self->{functor} = "cons";
+            $self->{arity}   = 2;
+            $self->{args}    = [];
+            for (my $j = $i - 2; $j > 0; $j--) {
+                my $term = $self->new("cons", 2);
+                $term->setarg(0, $ts->[$j]);
+                $term->setarg(1, $ts->[$j+1]);
+                $ts->[$j] = $term;
+            }
+            $self->{args}[0] = $ts->[0];
+            $self->{args}[1] = $ts->[1];
+        }
+    }
+    elsif ('!' eq $parser->current) {
+        $parser->advance;
+        return $self->CUT;
+    }
+    else {
+        $parser->parseerror("Term should begin with a letter, a digit, or '[', not a @{[$parser->current]}");
+    }
+    return $self;
 }
 
 sub varnum  { $VARNUM          } # class method
@@ -158,8 +266,7 @@ sub varid   { shift->{varid}   }
 sub ref     { shift->{ref}     }
 
 sub deref {
-    my $self = shift; # of course, this also begs the question of whether
-                      # the java code treated this as an alias or a copy :(
+    my $self = shift;
     while ($self->{bound} && $self->{deref}) {
         $self = $self->{ref};
     }
@@ -174,7 +281,7 @@ sub bound {
     return $self->{bound};
 }
 
-sub isBound { shift->bound }
+sub is_bound { shift->bound }
 
 sub traceln {
     my ($self, $msg) = @_;
@@ -256,7 +363,7 @@ sub getarity {
 }
 
 # check whether a variable occurs in a term
-# XXX Since a variable is not considered to occur in itself,
+# XXX Since a variable is not consideref to occur in itself,
 # XXX added occurs1 and a new front end called occurs()
 sub occurs {
     my ($self, $var) = @_;
@@ -456,19 +563,19 @@ sub to_string {
 my %CVDICT;
 my $CVN;
 
-sub cleanUp {
+sub clean_up {
     my $self = shift;
     %CVDICT = ();
     $CVN    = 0;
-    return $self->_cleanUp;
+    return $self->_clean_up;
 }
 
-sub _cleanUp {
+sub _clean_up {
     my $self = shift;
     my $term;
     if ($self->{bound}) {
         if ($self->{deref}) {
-            return $self->{ref}->_cleanUp;
+            return $self->{ref}->_clean_up;
         }
         elsif (! $self->{arity}) {
             return $self;
@@ -476,7 +583,7 @@ sub _cleanUp {
         else {
             $term = $self->dup;
             for my $i ( 0 .. $self->{arity} - 1) {
-                $term->{args}[$i] = $self->{args}[$i]->_cleanUp;
+                $term->{args}[$i] = $self->{args}[$i]->_clean_up;
             }
         }
     }
@@ -488,131 +595,6 @@ sub _cleanUp {
         }
     }
     return $term;
-}
-
-# This constructor is the simplest way to construct a term.  The term is given
-# in standard notation.
-# Example: my $term = Term->new(Parser->new("p(1,a(X,b))"));
-sub _new_from_parser {
-    my ($class, $parser) = @_;
-    my $self = bless {
-        functor => undef,
-        arity   => 0,
-        args    => [],
-        # if bound is false, $self is a reference to a free variable
-        bound   => 0,
-        varid   => undef, # XXX ??
-        # if bound and deref are both true, $self is a reference to a ref
-        deref   => 0,
-        ref     => undef,
-    } => $class;
-    my $ts   = [];
-    my $i    = 0;
-
-    $parser->skipspace; # otherwise we crash when we hit leading
-                        # spaces
-    if ($parser->current =~ /^[[:lower:]'"]$/) {
-        $self->{functor} = $parser->getname;
-        $self->{bound}   = 1;
-        $self->{deref}   = 0;
-
-        if ('(' eq $parser->current) {
-            $parser->advance;
-            $parser->skipspace;
-            $ts->[$i++] = $self->new($parser);
-            $parser->skipspace;
-
-            while (',' eq $parser->current) {
-                $parser->advance;
-                $parser->skipspace;
-                $ts->[$i++] = $self->new($parser);
-                $parser->skipspace;
-            }
-
-            if (')' ne $parser->current) {
-                $parser->parseerror("Expecting: ')'.  Got (@{[$parser->current]})");
-            }
-
-            $parser->advance;
-            $self->{args} = [];
-
-            $self->{args}[$_] = $ts->[$_] for 0 .. ($i -1);
-            $self->{arity} = $i;
-        }
-        else {
-           $self->{arity} = 0;
-        }
-    }
-    elsif ($parser->current =~ /^[[:upper:]]$/) {
-        $self->{bound}     = 1;
-        $self->{deref}     = 1;
-        my ($ref, $string) = $parser->getvar;
-        $self->{ref}       = $ref;
-        $self->{varname}   = $string;
-    }
-    elsif ($parser->current =~ /^[[:digit:]]$/) {
-        return Number->new($parser->getnum);
-    }
-    elsif ('[' eq $parser->current) {
-        $parser->advance;
-
-        if (']' eq $parser->current) {
-            $parser->advance;
-            $self->{functor} = NULL;
-            $self->{arity}   = 0;
-            $self->{bound}   = 1;
-            $self->{deref}   = 0;
-        }
-        else {
-            $parser->skipspace;
-            $ts->[$i++] = $self->new($parser);
-            $parser->skipspace;
-
-            while (',' eq $parser->current) {
-                $parser->advance;
-                $parser->skipspace;
-                $ts->[$i++] = $self->new($parser);
-                $parser->skipspace;
-            }
-
-            if ('|' eq $parser->current) {
-                $parser->advance;
-                $parser->skipspace;
-                $ts->[$i++] = $self->new($parser);
-                $parser->skipspace;
-            }
-            else {
-                $ts->[$i++] = $self->new(NULL, 0);
-            }
-
-            if (']' ne $parser->current) {
-                $parser->parseerror("Expecting ']'");
-            }
-
-            $parser->advance;
-            $self->{bound}   = 1;
-            $self->{deref}   = 0;
-            $self->{functor} = "cons";
-            $self->{arity}   = 2;
-            $self->{args}    = [];
-            for (my $j = $i - 2; $j > 0; $j--) {
-                my $term = $self->new("cons", 2);
-                $term->setarg(0, $ts->[$j]);
-                $term->setarg(1, $ts->[$j+1]);
-                $ts->[$j] = $term;
-            }
-            $self->{args}[0] = $ts->[0];
-            $self->{args}[1] = $ts->[1];
-        }
-    }
-    elsif ('!' eq $parser->current) {
-        $parser->advance;
-        return $self->CUT;
-    }
-    else {
-        $parser->parseerror("Term should begin with a letter, a digit, or '[', not a @{[$parser->current]}");
-    }
-    return $self;
 }
 
 # only used for integer results
@@ -641,21 +623,14 @@ sub value {
     my $arg0 = $self->{args}[0]->value;
     my $arg1 = $self->{args}[1]->value;
 
-    return $arg0 + $arg1 if 'plus'  eq $functor;
-    return $arg0 - $arg1 if 'minus' eq $functor;
-    return $arg0 * $arg1 if 'mult'  eq $functor;
-    return $arg0 / $arg1 if 'div'   eq $functor;
-    return $arg0 % $arg1 if 'mod'   eq $functor;
+    return $arg0 + $arg1  if 'plus'  eq $functor;
+    return $arg0 - $arg1  if 'minus' eq $functor;
+    return $arg0 * $arg1  if 'mult'  eq $functor;
+    return $arg0 / $arg1  if 'div'   eq $functor;
+    return $arg0 % $arg1  if 'mod'   eq $functor;
+    return $arg0 ** $arg1 if 'pow'   eq $functor;
     require Carp;
     Carp::croak("Unknown operator ($functor)");
-}
-
-sub dump {
-    my $self = shift;
-    return " - Term: $self->{functor}/$self->{arity}, "
-         . ($self->{bound}? "bound, " : "")
-         . ($self->{deref}? "ref, "   : "")
-         . $self->{varid};
 }
 
 1;

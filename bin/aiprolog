@@ -4,8 +4,9 @@ use strict;
 use Pod::Usage 1.12;
 use aliased 'AI::Prolog';
 AI::Prolog::Engine->formatted(1);
-#AI::Prolog::Engine->trace(1);
-use lib '../lib';
+
+use Carp;
+$SIG{__DIE__} = \&Carp::confess;
 
 my $file    = shift;
 my $program = '';

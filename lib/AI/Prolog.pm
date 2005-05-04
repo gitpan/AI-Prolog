@@ -1,6 +1,6 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.10 2005/02/24 07:16:24 ovid Exp $';
-$VERSION  = '0.62';
+$REVISION = '$Id: Prolog.pm,v 1.12 2005/02/28 02:57:17 ovid Exp $';
+$VERSION  = '0.63';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -52,12 +52,12 @@ sub results {
 }
 
 sub trace {
-    my $class = shift;
+    my $self = shift;
     if (@_) {
-        Engine->trace(shift);
-        return $class;
+        $self->{_engine}->trace(shift);
+        return $self;
     }
-    return Engine->trace;
+    return $self->{_engine}->trace;
 }
 
 sub raw_results {

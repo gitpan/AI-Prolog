@@ -1,5 +1,5 @@
 package AI::Prolog::Term::Number;
-$REVISION = '$Id: Number.pm,v 1.2 2005/02/20 18:27:55 ovid Exp $';
+$REVISION = '$Id: Number.pm,v 1.3 2005/02/28 02:32:11 ovid Exp $';
 $VERSION = '0.1';
 @ISA = 'AI::Prolog::Term';
 use strict;

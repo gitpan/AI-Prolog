@@ -1,5 +1,5 @@
 package AI::Prolog::TermList;
-$REVISION = '$Id: TermList.pm,v 1.6 2005/02/23 06:42:02 ovid Exp $';
+$REVISION = '$Id: TermList.pm,v 1.7 2005/02/28 02:32:11 ovid Exp $';
 
 $VERSION = 0.02;
 
@@ -19,7 +19,6 @@ sub new {
     return _new_from_term($class, @_)          if 1 == @_ && $_[0]->isa(Term);
     return _new_from_parser($class, @_)        if 1 == @_ && $_[0]->isa(Parser); # aargh! Lack of MMD sucks
     return _new_from_term_and_next($class, @_) if 2 == @_;
-    return _new_with_definer($class, @_)       if 3 == @_;
     if (@_) {
         require Carp;
         Carp::croak "Unknown arguments to TermList->new:  @_";
@@ -27,8 +26,7 @@ sub new {
     bless {
         term       => undef,
         next       => undef,
-        definer    => [], # XXX
-        nextClause => undef, # serves two purposes: either links clauses in database
+        next_clause => undef, # serves two purposes: either links clauses in database
                              # or points to defining clause for goals
     } => $class;
 }
@@ -96,15 +94,6 @@ sub _new_from_parser {
     return $self;
 }
 
-sub _new_with_definer {
-    my ($class, $term, $next, $definer) = @_;
-    my $self = $class->new;
-    $self->{term}       = $term;
-    $self->{next}       = $next;
-    $self->{definer}    = $definer->definer;
-    return $self;
-}
-
 sub _new_from_term_and_next {
     my ($class, $term, $next) = @_;
     my $self = $class->_new_from_term($term);
@@ -113,7 +102,6 @@ sub _new_from_term_and_next {
 }
 
 sub term       { shift->{term}       }
-sub definer    { shift->{definer}    }
 
 sub next {
     my $self = shift;
@@ -124,20 +112,35 @@ sub next {
     return $self->{next};
 }
 
-sub nextClause {
+sub next_clause {
     my $self = shift;
     if (@_) {
         # XXX debug
-        my $nextClause = shift;
+        my $next_clause = shift;
         no warnings 'uninitialized';
-        if ($nextClause eq $self) {
+        if ($next_clause eq $self) {
             require Carp;
             Carp::confess("Trying to assign a termlist as its own successor");
         }
-        $self->{nextClause} = $nextClause;
+        $self->{next_clause} = $next_clause;
         return $self;
     }
-    return $self->{nextClause};
+    return $self->{next_clause};
+}
+
+sub _to_string {
+    my $self = shift;
+    my $to_string = "[" . $self->term->to_string;
+    my $tl = $self->next;
+    my $i  = 0;
+    while ($tl && ++$i < 3) {
+        my $to_string .= ", ", $tl->term->to_string;
+        $tl = $tl->next;
+    }
+    if ($tl) {
+        $to_string .= ", ...";
+    }
+    return "$to_string]";
 }
 
 sub to_string {
@@ -151,20 +154,12 @@ sub to_string {
     return "$to_string]";
 }
 
-sub resolve {
+sub resolve { # a.k.a. lookup_in
     my ($self, $kb) = @_;
     my $key = sprintf "%s/%s" =>
         $self->{term}->getfunctor,
         $self->{term}->getarity;
-    $self->nextClause($kb->get($key));
-}
-
-sub lookupIn {
-    my ($self, $kb) = @_;
-    my $key = sprintf "%s/%s" =>
-        $self->{term}->getfunctor,
-        $self->{term}->getarity;
-    $self->nextClause($kb->get($key));
+    $self->next_clause($kb->get($key));
 }
 
 1;

@@ -1,9 +1,10 @@
 package AI::Prolog::Parser;
-$REVISION = '$Id: Parser.pm,v 1.3 2005/02/13 21:01:02 ovid Exp $';
+$REVISION = '$Id: Parser.pm,v 1.4 2005/02/28 02:32:11 ovid Exp $';
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 use strict;
 use warnings;
+use Regexp::Common;
 
 # debugging stuff
 use Clone;
@@ -19,11 +20,12 @@ sub new {
     my ($proto, $string) = @_;
     my $class = ref $proto || $proto; # yes, I know what I'm doing
     bless {
-        _str     => $string,
-        _posn    => 0,
-        _start   => 0,
-        _varnum  => 0,
-        _vardict => {},
+        _str      => $string,
+        _posn     => 0,
+        _start    => 0,
+        _varnum   => 0,
+        _internal => 0,
+        _vardict  => {},
     } => $class;
 }
 
@@ -64,6 +66,15 @@ sub _start   {shift->{_start}  }
 sub _varnum  {shift->{_varnum} }
 sub _vardict {shift->{_vardict}}
 
+sub _internal {
+    my $self = shift;
+    if (@_) {
+        $self->{_internal} = shift;
+        return $self;
+    }
+    return $self->{_internal};
+}
+
 # get the current character
 sub current {
     my $self = shift;
@@ -102,15 +113,11 @@ sub getname {
         return substr $getname => 1, length($getname) - 2; # strip the quotes
     }
     else {
-        $self->{_posn}++;
-        my $length = 0;
-        $self->{_posn}++, $length++ while $self->current =~ /^[[:alnum:]_]/;
-        
-        $getname   = substr $self->{_str} => $self->{_start}, $length + 1;
-        $self->{_posn} = length $self->{_str}
-            if $self->{_posn} > length $self->{_str};
+        my $string    = substr $self->{_str} => $self->{_start};
+        ($getname)    = $string =~ /^([[:alpha:]][[:alnum:]_]*)/;
+        $self->{_posn} += length $getname;
+        return $getname;
     }
-    return $getname;
 }
 
 # recognize a number
@@ -119,14 +126,12 @@ sub getnum {
     my $self = shift;
 
     $self->{_start} = $self->{_posn};
-    $self->{_posn}++;
-    my $length = 0;
-    $self->{_posn}++, $length++ while $self->current =~ /^[[:digit:]]/;
-    
-    my $getnum     = substr $self->{_str} => $self->{_start}, $length + 1;
-    $self->{_posn} = length $self->{_str}
-        if $self->{_posn} > length $self->{_str};
-
+    my $string      = substr $self->{_str} => $self->{_start};
+    my ($getnum)    = $string =~ /^($RE{num}{real})/;
+    if ('.' eq substr $getnum => -1, 1) {
+        $getnum = substr $getnum => 0, length($getnum) - 1;
+    }
+    $self->{_posn} += length $getnum;
     return $getnum;
 }
 
@@ -211,8 +216,9 @@ sub consult {
         my $body = $tls->next;
         my $key  = "$func/$arity";
 
-        my $add = ($body && $body->isa(Primitive))? 'addPrimitive' : 'addClause';
-        $db->$add(Clause->new($head,$body));
+        my $add = ($body && $body->isa(Primitive))? 'add_primitive' : 'add_clause';
+        my $clause = Clause->new($head,$body);
+        $db->$add($clause);
         $ps->skipspace;
         $ps->nextclause; # new set of vars
     }
