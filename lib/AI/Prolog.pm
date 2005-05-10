@@ -1,6 +1,6 @@
 package AI::Prolog;
 $REVISION = '$Id: Prolog.pm,v 1.12 2005/02/28 02:57:17 ovid Exp $';
-$VERSION  = '0.63';
+$VERSION  = '0.64';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -9,8 +9,14 @@ use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::Engine';
 
+use Text::Quote;
+use Regexp::Common;
+
 # they don't want pretty printed strings if they're using this interface
 Engine->formatted(0);
+# Until (and unless) we figure out the weird bug that prevents some values
+# binding in the external interface, we need to stick with this as the default
+Engine->raw_results(1);
 
 sub new {
     my ($class, $program) = @_;
@@ -69,6 +75,18 @@ sub raw_results {
     return Engine->raw_results;
 }
 
+my $QUOTER;
+sub quote {
+    my ($proto, $string) = @_;
+    $QUOTER = Text::Quote->new unless $QUOTER;
+    return $QUOTER->quote_simple($string);
+}
+
+sub make_list {
+    my $proto = shift;
+    return join ", " => map { /^$RE{num}{real}$/ ? $_ : $proto->quote($_) } @_;
+}
+
 1;
 
 __END__
@@ -112,6 +130,13 @@ For those who like to just dive right in, this distribution contains a simple
 Prolog shell called C<aiprolog> and a short adventure game called C<spider.pro>.
 
 See the C<bin/> and C<data/> directories in the distribution.
+
+=head1 ALPHA CODE
+
+This is alpha code.  This will likely be alpha code for a while until a new
+parser is in place and we can stabilize the interface.  B<Do not depend on the
+interface remaining stable>!  If you need it stable, drop me a line and I'll
+see what I can do.
 
 =head1 DESCRIPTION
 
@@ -222,12 +247,10 @@ Calling C<trace> without an argument returns the current C<trace> value.
 
 =head2 C<raw_results([$boolean])>
 
-Ordinarily, the object returned by C<query> will provide methods to allow you
-to access the data the variables are bound to.  However, this is not always
-sufficient.  You can get access to the full, raw results by setting
-C<raw_results> to true.  In this mode, the results are returned as an array
-reference with the functor as the first element and an additional element for
-each term.  Lists are represented as array references.
+You can get access to the full, raw results by setting C<raw_results> to true.
+In this mode, the results are returned as an array reference with the functor
+as the first element and an additional element for each term.  Lists are
+represented as array references.
 
  AI::Prolog->raw_results(1);
  $prolog->query('steals(badguy, STUFF, VICTIM)');
@@ -238,6 +261,38 @@ each term.  Lists are represented as array references.
 
 Calling C<raw_results> without an argument returns the current C<raw_results>
 value.
+
+This is the default behavior.
+
+=head2 C<quote($string)>.
+
+This method quotes a Perl string to allow C<AI::Prolog> to treat it as a proper
+Prolog term (and not worry about it accidentally being treated as a variable if
+it begins with an upper-case letter).
+
+ my $perl6 = AI::Prolog->quote('Perl 6'); # returns 'Perl 6' (with quotes)
+ $prolog->query(qq'can_program("ovid",$perl6).');
+
+At the present time, quoted strings may use single or double quotes as strings.
+This is somewhat different from standard Prolog which treats a double-quoted
+string as a list of characters.
+
+Maybe called on an instance (the behavior is unchanged).
+
+=head2 C<list(@list)>.
+
+Turns a Perl list into a Prolog list and makes it suitable for embedding into
+a program.  This will quote individual variables, unless it thinks they are
+a number.  If you wish numbers to be quoted with this method, you will need to
+quote them manually.
+
+This method does not add the list brackets.
+
+ my $list = AI::Prolog->list(qw/foo Bar 7 baz/);
+ # returns:  'foo', 'Bar', 7, 'baz'
+ $prolog->query(qq/append(X,Y,[$list])./);
+
+May be called on an instance (the behavior is unchanged).
 
 =head1 INSTANCE METHODS
 

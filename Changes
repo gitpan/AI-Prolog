@@ -1,6 +1,13 @@
 Revision history for Perl extension AI::Prolog.
 
-0.63
+0.64  Mon May 09, 2005
+      Change default behavior to AI::Prolog->raw_results(1).
+      Added quote() method to allow Perl variables to be quoted
+      and used at Prolog terms.
+      Added list() method to allow a Perl list to be turned into
+      a Prolog list.
+
+0.63  Wed May 04, 2005
       Allow parser to properly handle positive and negative numbers
       and decimal points.
       Added pow(X,Y).
@@ -8,7 +15,7 @@ Revision history for Perl extension AI::Prolog.
       Added trace. and notrace.
       Added a TODO test for a failing regression test.
 
-0.62  Fri Feb 25
+0.62  Fri Feb 25, 2005
       Added code to avoid bug in some Perl's where "undef" looks
       like a number.
       Major performance improvement.  Now runs about 40% faster.
@@ -27,11 +34,11 @@ Revision history for Perl extension AI::Prolog.
         lt(X,Y).
       Added towers of hanoi and a scheduler to the examples/.
 
-0.61  Mon Feb 21
+0.61  Mon Feb 21, 2005
       Added var(X).
       Disabled tracing in the aiprolog shell (whoops!)
 
-0.6   Sun Feb 20
+0.6   Sun Feb 20, 2005
       Added tests for the cut, number, and clause classes.
 
       Added stub tests for step and primitive classes.
@@ -41,7 +48,7 @@ Revision history for Perl extension AI::Prolog.
 
       Updated the TODO list in AI::Prolog.
 
-0.5   Sun Feb 13
+0.5   Sun Feb 13, 2005
       Put the database into its own class.
 
       Pulled engine backtracking out into its own method.
@@ -61,7 +68,7 @@ Revision history for Perl extension AI::Prolog.
 
       * XXX Also screwed up the numbering scheme.  Grumble XXX *
 
-0.04  Sun Jan 30
+0.04  Sun Jan 30, 2005
       Added support for quoting terms.  
       
       Added Engine->formatted method which allows results to be returned as
@@ -75,13 +82,13 @@ Revision history for Perl extension AI::Prolog.
 
       Massive documentation update.
 
-0.03  Sun Jan 23
+0.03  Sun Jan 23, 2005
       Added tests for built-in predicates.
 
       Added query() function to AI::Logic::Engine to allow successive queries
       without a new bootstrap.
 
-0.02  Sun Jan 23
+0.02  Sun Jan 23, 2005
       First public release of AI::Prolog.
 
 0.01  Thu Jan 20 20:47:49 PST 2005

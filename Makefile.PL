@@ -19,6 +19,7 @@ WriteMakefile(
         'Test::Differences' => 0.47,
         'Test::MockModule'  => 0.04,
         'Text::Balanced'    => 1.95,
+        'Text::Quote'       => 0.03,
     },
     ($] >= 5.005
         ? (ABSTRACT_FROM => 'lib/AI/Prolog.pm', AUTHOR => 'Curtis "Ovid" Poe')
