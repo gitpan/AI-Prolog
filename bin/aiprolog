@@ -1,10 +1,17 @@
-#!/usr/bin/perl
+#!/usr/local/bin/perl
+
+eval 'exec /usr/local/bin/perl  -S $0 ${1+"$@"}'
+    if 0; # not running under some shell
 use warnings;
 use strict;
+use Term::ReadLine;
+use Term::ReadKey;
 use Pod::Usage 1.12;
 use aliased 'AI::Prolog';
 AI::Prolog::Engine->formatted(1);
 
+my $term = Term::ReadLine->new('AI::Prolog');
+my $OUT  = $term->OUT || \*STDOUT;
 use Carp;
 $SIG{__DIE__} = \&Carp::confess;
 
@@ -17,14 +24,16 @@ if ($file) {
 my $prolog  = Prolog->new($program);
 my $version = Prolog->VERSION;
 
-print "Welcome to AI::Prolog v $version\n\nType '?' for help.";
+print $OUT "Welcome to AI::Prolog v $version\n\nType '?' for help.\n\n";
 
-my $MORE    = 1;
 my $COMMAND = qr/^%\s*/;
+my $RESULTS = 0;
 while (1) {
-    print "\n?- ";
-    my $query;
-    chomp ($query = <STDIN>) until $query;
+    my $query = $term->readline("?- ");
+    chomp $query;
+    next unless $query;
+    $term->addhistory($query);
+    print $OUT "\n";
     
     if ( $query =~ /^\s*\?/ ) {
         help();
@@ -35,30 +44,44 @@ while (1) {
         if ($query =~ /$COMMAND(?:help)/i) {
             help();
         }
-        elsif ($query =~ /${COMMAND}more/i) {
-            $MORE = 1;
-        }
-        elsif ($query =~ /${COMMAND}no\s*more/i) {
-            $MORE = 0;
-        }
         next;
     }
-
+    
     eval {$prolog->query($query)};
     if ($@) {
         warn $@;
         next;
     }
-    print $prolog->results, "\n";
-    while ($MORE && user_wants_more()) {
-        print $prolog->results, "\n";
+    $RESULTS = 1;
+    show_results($prolog);
+    while (user_wants_more()) {
+        show_results($prolog);
     }
 }
-    
+
+sub show_results {
+    return unless $RESULTS;
+    my ($prolog) = @_;
+    my $results = $prolog->results;
+    $results ||= ''; # otherwise it's an arrayref
+    print $OUT $results, " ";
+    unless ($results) {
+        print $OUT "No\n";
+        $RESULTS = 0;
+    }
+}
+
 sub user_wants_more {
-    print "More? (y/N) ";
-    my $response = <STDIN>;
-    return $response =~ /^[Yy]/;
+    return unless $RESULTS;
+    ReadMode 'cbreak';
+    my $key = ReadKey(0);
+    ReadMode 'normal';
+    if (';' eq $key) {
+        print $OUT ";\n\n";
+        return 1;
+    }
+    print $OUT "\n\nYes\n" if $RESULTS;
+    return;
 }
 
 my $offset;
@@ -90,11 +113,8 @@ currently accepts.
 
 =head2 Commands
 
-Commands specific to aiprolog:
+Commands specific to aiprolog shell:
 
- "% more"     -- enables prompting for more results (default)
- "% no more"  -- disables prompting for more results
- "% nomore"   -- same as "no more"
  "% halt"     -- stops the shell
  "% help"     -- display this message
 
@@ -104,19 +124,70 @@ execute a prolog command.
 
 aiprolog-specific commands are case-insensitive.
 
+=head2 Typical session
+
+Save the following to a file named "append.pro":
+
+ append([],X,X).
+ append([W|X], Y, [W|Z]) :- append(X,Y,Z).
+
+Then load it into the C<aiprolog> shell by typing this at a shell:
+
+ aiprolog path/to/append.pro
+
+In the shell, you should be greeted by a query prompt "?-".  At this prompt,
+you can issue queries against the program.  Try entering the following query:
+
+ append(X,Y,[1,2,3,4]).
+
+The shell should respond with this:
+
+ append([],[1,2,3,4],[1,2,3,4]) ;
+
+It should then appear to hang.  It's waiting for you to type a character.  If
+you type a semi-colon, it will attempt to resatisfy the query.  If you keep
+doing that until there are no more valid results left, you'll see this:
+
+ ?- append(X,Y,[1,2,3,4]).
+
+ append([],[1,2,3,4],[1,2,3,4]) ;
+
+ append([1],[2,3,4],[1,2,3,4]) ;
+
+ append([1,2],[3,4],[1,2,3,4]) ;
+
+ append([1,2,3],[4],[1,2,3,4]) ;
+
+ append([1,2,3,4],[],[1,2,3,4]) ; 
+
+ No
+ 
+ ?-
+
+The "No" is just Prolog's way of telling you there are no more results which
+satisfy your query.  If you stop trying to satisfy results before all solutions
+have been found, you might see something like this:
+
+ ?- append(X,Y,[1,2,3,4]).
+
+ append([],[1,2,3,4],[1,2,3,4]) ;
+
+ append([1],[2,3,4],[1,2,3,4]) ;
+
+ append([1,2],[3,4],[1,2,3,4])
+
+ Yes
+
+ ?-
+
+The "Yes" simply says that Prolog found results for you.
+
 =head2 The game
 
 If you are hoping to use this to play the bundled "Spider" game, I recommend
 the following:
 
  aiprolog location/of/spider.pro
-
-At the prompt:
-
- ?- % no more
-
-That disables the "More? (y/N)" query which gets very annoying while playing
-the game, though it's useful when you really want to program.
 
 Then issue the "start" command (defined in "spider.pro").
 

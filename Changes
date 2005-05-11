@@ -1,5 +1,10 @@
 Revision history for Perl extension AI::Prolog.
 
+0.65  Wed May 11, 2005
+      Added Term::ReadLine support to aiprolog shell.
+      Added Term::ReadKey support to aiprolog shell.
+      Minor doc corrections.
+
 0.64  Mon May 09, 2005
       Change default behavior to AI::Prolog->raw_results(1).
       Added quote() method to allow Perl variables to be quoted

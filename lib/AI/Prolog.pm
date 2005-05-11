@@ -1,6 +1,6 @@
 package AI::Prolog;
 $REVISION = '$Id: Prolog.pm,v 1.12 2005/02/28 02:57:17 ovid Exp $';
-$VERSION  = '0.64';
+$VERSION  = '0.65';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -105,11 +105,11 @@ AI::Prolog - Perl extension for logic programming.
  append([W|X],Y,[W|Z]) :- append(X,Y,Z).
  END_PROLOG
 
- my $logic = AI::Prolog->new($database);
- $logic->query('append(X,Y,[a,b,c,d])');
- while (my $result = $logic->results) {
-     print Dumper($result->X);
-     print Dumper($result->Y);
+ my $prolog = AI::Prolog->new($database);
+ my $list   = $prolog->list(qw/a b c d/);
+ $prolog->query("append(X,Y,[$list]).");
+ while (my $result = $prolog->results) {
+     print Dumper $result;
  }
 
 =head1 ABSTRACT
