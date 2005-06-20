@@ -5,6 +5,7 @@ use warnings;
 use lib ('../lib/', 'lib/');
 
 use aliased 'AI::Prolog';
+AI::Prolog->raw_results(0); # experimental
 my $logic = Prolog->new(thief_prog());
 print "Without trace ...\n";
 $logic->query('steals("Bad guy", STUFF, VICTIM)');

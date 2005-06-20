@@ -1,7 +1,7 @@
 package AI::Prolog::Parser;
-$REVISION = '$Id: Parser.pm,v 1.4 2005/02/28 02:32:11 ovid Exp $';
+$REVISION = '$Id: Parser.pm,v 1.7 2005/06/20 07:36:48 ovid Exp $';
 
-$VERSION = '0.03';
+$VERSION = '0.10';
 use strict;
 use warnings;
 use Regexp::Common;
@@ -10,17 +10,23 @@ use Regexp::Common;
 use Clone;
 use Text::Balanced qw/extract_quotelike extract_delimited/;
 
+use aliased 'AI::Prolog::Engine';
+use aliased 'AI::Prolog::KnowledgeBase';
+use aliased 'AI::Prolog::Parser::PreProcessor';
 use aliased 'AI::Prolog::Term';
+use aliased 'AI::Prolog::Term::Number';
 use aliased 'AI::Prolog::TermList';
 use aliased 'AI::Prolog::TermList::Clause';
 use aliased 'AI::Prolog::TermList::Primitive';
-use aliased 'AI::Prolog::KnowledgeBase';
+        
+my $ATOM = qr/[[:alpha:]][[:alnum:]_]*/;
+
+use constant NULL => 'null';
 
 sub new {
-    my ($proto, $string) = @_;
-    my $class = ref $proto || $proto; # yes, I know what I'm doing
+    my ($class, $string) = @_;
     bless {
-        _str      => $string,
+        _str      => PreProcessor->process($string),
         _posn     => 0,
         _start    => 0,
         _varnum   => 0,
@@ -82,10 +88,33 @@ sub current {
     return substr $self->{_str} => $self->{_posn}, 1;
 }
 
+# peek at the next character
+sub peek {
+    my $self = shift;
+    return '#' if $self->empty;
+    return substr($self->{_str} => ($self->{_posn} + 1), 1) || '#';
+}
+
+
 # is the parsestring empty?
 sub empty {
     my $self = shift;
     return $self->{_posn} >= length $self->{_str};
+}
+
+my $LINENUM = 1;
+sub linenum {
+    my $self = shift;
+    if (@_) {
+        $LINENUM = shift;
+        return $self;
+    }
+    $LINENUM;
+}
+
+sub advance_linenum {
+    my $self = shift;
+    $LINENUM++;
 }
 
 # Move a character forward
@@ -93,6 +122,7 @@ sub advance {
     my $self = shift;
     # print $self->current; # XXX
     $self->{_posn}++ unless $self->{_posn} >= length $self->{_str};
+    $self->advance_linenum if $self->current =~ /[\r\n]/;
 }
 
 # all three get methods must be called before advance
@@ -107,6 +137,7 @@ sub getname {
     $self->{_start} = $self->{_posn};
     my $getname;
     if ($self->current =~ /['"]/) {
+        # Normally, Prolog distinguishes between single and double quoted strings
         my $string = substr $self->{_str} => $self->{_start};
         $getname   = extract_delimited($string);
         $self->{_posn} += length $getname;
@@ -114,7 +145,7 @@ sub getname {
     }
     else {
         my $string    = substr $self->{_str} => $self->{_start};
-        ($getname)    = $string =~ /^([[:alpha:]][[:alnum:]_]*)/;
+        ($getname)    = $string =~ /^($ATOM)/;
         $self->{_posn} += length $getname;
         return $getname;
     }
@@ -148,11 +179,26 @@ sub getvar {
     return ($term, $string);
 }
 
+my $ANON = 'a';
+sub get_anon {
+    my $self   = shift;
+    # HACK!!!
+    my $string = '___'.$ANON++;
+    $self->advance;
+    my $term   = $self->{_vardict}{$string};
+    unless ($term) {
+        $term = Term->new($self->{_varnum}++); # XXX wrong _varnum?
+        $self->{_vardict}{$string} = $term;
+    }
+    return ($term, $string);
+}
+
 # handle errors in one place
 sub parseerror {
     my ($self, $character) = @_;
+    my $linenum = $self->linenum;
     require Carp;
-    Carp::croak "Unexpected character: ($character)";
+    Carp::croak "Unexpected character: ($character) at line number $linenum";
 }
 
 # skips whitespace and prolog comments
@@ -204,23 +250,22 @@ sub nextclause {
 sub consult {
     my ($class, $program, $db) = @_;
     $db ||= KnowledgeBase->new;
-    my $ps = $class->new($program);
-    $ps->skipspace;
+    my $self = $class->new($program);
+    $self->linenum(1);
+    $self->skipspace;
 
-    until ($ps->empty) {
-        my $tls   = TermList->new($ps);
-        my $func  = $tls->term->getfunctor;
-        my $arity = $tls->term->getarity;
+    until ($self->empty) {
+        my $tls   = TermList->new($self);
 
         my $head = $tls->term;
         my $body = $tls->next;
-        my $key  = "$func/$arity";
 
         my $add = ($body && $body->isa(Primitive))? 'add_primitive' : 'add_clause';
         my $clause = Clause->new($head,$body);
+        $clause->is_builtin(1) if Engine->_adding_builtins;
         $db->$add($clause);
-        $ps->skipspace;
-        $ps->nextclause; # new set of vars
+        $self->skipspace;
+        $self->nextclause; # new set of vars
     }
     return $db;
 }
@@ -230,6 +275,186 @@ sub resolve {
     foreach my $tls (values %{$db->ht}) {
         $tls->resolve($db);
     }
+}
+
+sub _termlist {
+    my ($self, $termlist_class) = @_;
+    my $termlist = $termlist_class->new;
+    my @ts   = Term->new($self);
+    $self->skipspace;
+
+    if ($self->current eq ':') {
+        $self->advance;
+
+        if ($self->current eq '=') {
+            # we're parsing a primitive
+            $self->advance;
+            $self->skipspace;
+            my $id = $self->getnum;
+            $self->skipspace;
+            $termlist->{term} = $ts[0];
+            $termlist->{next} = Primitive->new($id);
+        }
+        elsif ($self->current ne '-') {
+            $self->parseerror("Expected '-' after ':'");
+        }
+        else {
+            $self->advance;
+            $self->skipspace;
+
+            push @ts => Term->new($self);
+            $self->skipspace;
+
+            while ($self->current eq ',') {
+                $self->advance;
+                $self->skipspace;
+                push @ts => Term->new($self);
+                $self->skipspace;
+            }
+
+            my @tsl;
+            for my $j (reverse 1 .. $#ts) {
+                $tsl[$j] = $termlist->new($ts[$j], $tsl[$j+1]);
+            }
+
+            $termlist->{term} = $ts[0];
+            $termlist->{next} = $tsl[1];
+        }
+    }
+    else {
+        $termlist->{term} = $ts[0];
+        $termlist->{next} = undef;
+    }
+
+    if ($self->current ne '.') {
+        $self->parseerror("Expected '.' Got '@{[$self->current]}'");
+    }
+    $self->advance;
+    return $termlist;
+}
+
+# This constructor is the simplest way to construct a term.  The term is given
+# in standard notation.
+# Example: my $term = Term->new(Parser->new("p(1,a(X,b))"));
+sub _term {
+    my ($self, $term_class) = @_;
+    my $term = $term_class->new(undef, undef);
+    my $ts   = [];
+    my $i    = 0;
+
+    $self->skipspace; # otherwise we crash when we hit leading
+                        # spaces
+    if ($self->current =~ /^[[:lower:]'"]$/) {
+        $term->{functor} = $self->getname;
+        $term->{bound}   = 1;
+        $term->{deref}   = 0;
+
+        if ('(' eq $self->current) {
+            $self->advance;
+            $self->skipspace;
+            $ts->[$i++] = $term->new($self);
+            $self->skipspace;
+
+            while (',' eq $self->current) {
+                $self->advance;
+                $self->skipspace;
+                $ts->[$i++] = $term->new($self);
+                $self->skipspace;
+            }
+
+            if (')' ne $self->current) {
+                $self->parseerror("Expecting: ')'.  Got (@{[$self->current]})");
+            }
+
+            $self->advance;
+            $term->{args} = [];
+
+            $term->{args}[$_] = $ts->[$_] for 0 .. ($i -1);
+            $term->{arity} = $i;
+        }
+        else {
+           $term->{arity} = 0;
+        }
+    }
+    elsif ($self->current =~ /^[[:upper:]]$/) {
+        $term->{bound}     = 1;
+        $term->{deref}     = 1;
+        my ($ref, $string) = $self->getvar;
+        $term->{ref}       = $ref;
+        $term->{varname}   = $string;
+    }
+    elsif ('_' eq $self->current && $self->peek =~ /^[\]\|\.;\s\,\)]$/) {
+        # temporary hack to allow anonymous variables
+        # this should really be cleaned up
+        $term->{bound}     = 1;
+        $term->{deref}     = 1;
+        my ($ref, $string) = $self->get_anon;
+        $term->{ref}       = $ref;
+        $term->{varname}   = $string;
+    }
+    elsif ($self->current =~ /^[-.[:digit:]]$/) {
+        return Number->new($self->getnum);
+    }
+    elsif ('[' eq $self->current) {
+        $self->advance;
+
+        if (']' eq $self->current) {
+            $self->advance;
+            $term->{functor} = NULL;
+            $term->{arity}   = 0;
+            $term->{bound}   = 1;
+            $term->{deref}   = 0;
+        }
+        else {
+            $self->skipspace;
+            $ts->[$i++] = $term->new($self);
+            $self->skipspace;
+
+            while (',' eq $self->current) {
+                $self->advance;
+                $self->skipspace;
+                $ts->[$i++] = $term->new($self);
+                $self->skipspace;
+            }
+
+            if ('|' eq $self->current) {
+                $self->advance;
+                $self->skipspace;
+                $ts->[$i++] = $term->new($self);
+                $self->skipspace;
+            }
+            else {
+                $ts->[$i++] = $term->new(NULL, 0);
+            }
+
+            if (']' ne $self->current) {
+                $self->parseerror("Expecting ']'");
+            }
+
+            $self->advance;
+            $term->{bound}   = 1;
+            $term->{deref}   = 0;
+            $term->{functor} = "cons";
+            $term->{arity}   = 2;
+            $term->{args}    = [];
+            for (my $j = $i - 2; $j > 0; $j--) {
+                my $term = $term->new("cons", 2);
+                $term->setarg(0, $ts->[$j]);
+                $term->setarg(1, $ts->[$j+1]);
+                $ts->[$j] = $term;
+            }
+            $term->{args}[0] = $ts->[0];
+            $term->{args}[1] = $ts->[1];
+        }
+    }
+    elsif ('!' eq $self->current) {
+        $self->advance;
+        return $term->CUT;
+    }
+    else {
+        $self->parseerror("Term should begin with a letter, a digit, or '[', not a @{[$self->current]}");
+    }
+    return $term;
 }
 
 1;

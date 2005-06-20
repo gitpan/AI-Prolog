@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         AI-Prolog
-version:      0.65
+version:      0.7
 version_from: lib/AI/Prolog.pm
 installdirs:  site
 requires:
@@ -14,9 +14,10 @@ requires:
     Term::ReadKey:                 2.21
     Term::ReadLine:                1.01
     Test::Differences:             0.47
+    Test::Exception:               0.2
     Test::MockModule:              0.04
     Text::Balanced:                1.95
     Text::Quote:                   0.03
 
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.27
+generated_by: ExtUtils::MakeMaker version 6.17

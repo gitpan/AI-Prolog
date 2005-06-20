@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 50engine.t,v 1.8 2005/02/28 02:57:17 ovid Exp $';
+# '$Id: 50engine.t,v 1.9 2005/06/20 07:36:48 ovid Exp $';
 use warnings;
 use strict;
 use Test::More tests => 35;
@@ -45,6 +45,7 @@ isa_ok $engine, $CLASS, '... and the object it returns';
     append/3
     assert/1
     call/1
+    consult/1
     eq/2
     fail/0
     ge/2
@@ -54,7 +55,9 @@ isa_ok $engine, $CLASS, '... and the object it returns';
     is/2
     le/2
     listing/0
+    listing/1
     lt/2
+    ne/2
     nl/0
     not/1
     notrace/0

@@ -9,10 +9,10 @@ my $prolog = Prolog->new(<<'END_PROLOG');
 hanoi(N) :-
     move(N, left, center, right).
 
-move(0, NULL1, NULL2, NULL3) :- !.
+move(0, _, _, _) :- !.
 
 move(N,A,B,C) :-
-    is(M, minus(N,1)),
+    M is N - 1,
     move(M,A,C,B),
     inform(A,B),
     move(M,C,B,A).

@@ -58,7 +58,7 @@ take(X) :-
         print('OK.'),
         nl.
 
-take(NULL0) :-
+take(_) :-
         print('I do not see it here.'),
         nl.
 
@@ -72,7 +72,7 @@ drop(X) :-
         print('OK.'),
         nl.
 
-drop(NULL1) :-
+drop(_) :-
         print('You are not holding it!'),
         nl.
 
@@ -99,7 +99,7 @@ go(Direction) :-
         assert(i_am_at(There)),
         look.
 
-go(NULL2) :-
+go(_) :-
         print('You cannot go that way.').
 
 
@@ -120,7 +120,7 @@ notice_objects_at(Place) :-
         print('There is a '), print(X), print(' here.'), nl,
         fail.
 
-notice_objects_at(NULL3).
+notice_objects_at(_).
 
 % These rules tell how to handle killing the lion and the spider.
 

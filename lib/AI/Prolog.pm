@@ -1,6 +1,6 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.12 2005/02/28 02:57:17 ovid Exp $';
-$VERSION  = '0.65';
+$REVISION = '$Id: Prolog.pm,v 1.16 2005/06/20 07:36:48 ovid Exp $';
+$VERSION  = '0.7';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -82,7 +82,7 @@ sub quote {
     return $QUOTER->quote_simple($string);
 }
 
-sub make_list {
+sub list {
     my $proto = shift;
     return join ", " => map { /^$RE{num}{real}$/ ? $_ : $proto->quote($_) } @_;
 }
@@ -202,14 +202,15 @@ Side note:  in Prolog, programs are often referred to as databases.
 
 To create a query for the database, use C<query>.
 
-  $prolog->query("steals(badguy,X)");
+  $prolog->query("steals(badguy,X).");
 
 =head2 Running a query
 
 Call the C<results> method and inspect the C<results> object:
 
   while (my $result = $prolog->results) {
-      printf "badguy steals %s\n", $results->X;
+      # $result = [ 'steals', 'badguy', $x ]
+      print "badguy steals $result->[2]\n";
   }
 
 =head1 GRAMMAR
@@ -302,11 +303,11 @@ This method is useful when you wish to combine the C<query()> and C<results()>
 methods but don't care about the results returned.  Most often used with the
 C<assert(X)> and C<retract(X)> predicates.
 
- $prolog->do('assert(loves(ovid,perl))');
+ $prolog->do('assert(loves(ovid,perl)).');
 
 This is a shorthand for:
 
- $prolog->query('assert(loves(ovid,perl))');
+ $prolog->query('assert(loves(ovid,perl)).');
  1 while $prolog->results;
 
 This is important because the C<query()> method merely builds the query.  Not
@@ -318,7 +319,7 @@ After instantiating an C<AI::Prolog> object, use this method to query it.
 Queries currently take the form of a valid prolog query but the final period
 is optional:
 
- $prolog->query('grandfather(Ancestor, julie)');
+ $prolog->query('grandfather(Ancestor, julie).');
 
 This method returns C<$self>.
 
@@ -328,16 +329,18 @@ After a query has been issued, this method will return results satisfying the
 query.  When no more results are available, this method returns C<undef>.
 
  while (my $result = $prolog->results) {
-     printf "%s is a grandfather of julie.\n", $result->Ancestor;
+     # [ 'grandfather', $ancestor, 'julie' ]
+     print "$result->[1] is a grandfather of julie.\n";
  }
 
-If C<raw_results> is false (this is the default behavior), the return value
-will be a "result" object with methods corresponding to the variables.  This is
-currently implemented as a L<Hash::AsObject|Hash::AsObject> so the caveats with
-that module apply.
+If C<raw_results> is false, the return value will be a "result" object with
+methods corresponding to the variables.  This is currently implemented as a
+L<Hash::AsObject|Hash::AsObject> so the caveats with that module apply.
 
- $logic->query('steals("Bad guy", STUFF, VICTIM)');
- while (my $r = $logic->results) {
+Please note that this interface is experimental and may change.
+
+ $prolog->query('steals("Bad guy", STUFF, VICTIM)');
+ while (my $r = $prolog->results) {
      print "Bad guy steals %s from %s\n", $r->STUFF, $r->VICTIM;
  }
 
@@ -363,11 +366,11 @@ though.
 
 See L<BUGS>
 
-=item * Fix infinite loop.
+=item * Why does this take so long to run?
 
  perl examples/path.pl 3
 
-That never returns or I haven't run it long enough.
+On my Mac that takes over an hour to complete.
 
 =item * Support for more builtins.
 
@@ -376,17 +379,6 @@ That never returns or I haven't run it long enough.
 I have a number of ideas for this, but it's pretty low-priority until things
 are stabilized.
 
-=item * Anonymous variables.
-
- father(Person, _). % is Person a father of *anyone*?
-
-We can't use the underscore.  We have to make up a dummy variable and use it
-only once.
-
- father(Person, Dummy1).
-
-Ugh.
-
 =item * Add "sugar" interface.
 
 =item * Better docs.
@@ -394,6 +386,8 @@ Ugh.
 =item * Tutorial.
 
 =item * Data structure cookbook.
+
+=item * Better error reporting.
 
 =back
 

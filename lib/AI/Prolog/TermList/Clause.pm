@@ -1,5 +1,5 @@
 package AI::Prolog::TermList::Clause;
-$REVISION = '$Id: Clause.pm,v 1.2 2005/02/20 18:27:55 ovid Exp $';
+$REVISION = '$Id: Clause.pm,v 1.3 2005/06/20 07:36:48 ovid Exp $';
 $VERSION = '0.1';
 @ISA = 'AI::Prolog::TermList';
 use strict;
@@ -8,8 +8,7 @@ use warnings;
 sub new {
         #      Term  TermList
     my $class = shift;
-    my $self = $class->SUPER::new(@_);
-    return $self;
+    return $class->SUPER::new(@_);
 }
 
 sub to_string {
@@ -19,6 +18,15 @@ sub to_string {
         $_ = $_? $_->to_string : "null";
     }
     return sprintf "%s :- %s" => $term, $next;
+}
+
+sub is_builtin {
+    my $self = shift;
+    if (@_) {
+        $self->{is_builtin} = shift;
+        return $self;
+    }
+    return $self->{is_builtin};
 }
 
 1;

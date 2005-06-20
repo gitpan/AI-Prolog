@@ -1,11 +1,10 @@
 #!/usr/bin/perl
-# '$Id: 60aiprolog.t,v 1.2 2005/01/30 21:54:16 ovid Exp $';
+# '$Id: 60aiprolog.t,v 1.3 2005/05/14 18:03:05 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 3;
+use Test::More tests => 5;
 use Test::MockModule;
 use Test::Differences;
-use Clone qw/clone/;
 
 my $CLASS;
 BEGIN
@@ -26,3 +25,24 @@ my $engine = Engine->new($query,$database);
 
 isa_ok $query,  Term,   '... and the Term shortcut';
 isa_ok $engine, Engine, '... and the Engine shortcut';
+
+my $prolog = AI::Prolog->new(<<'END_PROLOG');
+member(X,[X|Xs]).
+member(X,[_|Tail]) :- member(X,Tail).
+END_PROLOG
+
+$prolog->query('member(3, [1,2,3,4]).');
+ok $prolog->results, '... and unifying with anonymous variables should succeed';
+
+
+$prolog = AI::Prolog->new(<<'END_PROLOG');
+member(X,[X|Xs]).
+member(X,[_|Tail]) :- member(X,Tail).
+
+thief(alan).
+steals(bob, _, _) :- thief(bob).
+thief(bob).
+END_PROLOG
+
+$prolog->query('steals(bob,X,Y).');
+ok $prolog->results, '... even if we have multiple anonymous variables';

@@ -1,9 +1,10 @@
 package AI::Prolog::KnowledgeBase;
-$REVISION = '$Id: KnowledgeBase.pm,v 1.3 2005/02/28 02:32:11 ovid Exp $';
+$REVISION = '$Id: KnowledgeBase.pm,v 1.4 2005/06/20 07:36:48 ovid Exp $';
 $VERSION = '0.02';
 use strict;
 use warnings;
 
+use aliased 'AI::Prolog::Engine';
 use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::TermList::Clause';
 
@@ -49,9 +50,9 @@ sub reset    {
 }
 
 sub consult {
-    my $self = shift;
+    my ($self, $program) = @_;
     $self->{oldIndex} = '';
-    Parser->new(shift)->Program($self);
+    return Parser->consult($program, $self);
 }
 
 sub add_primitive {
@@ -203,12 +204,11 @@ sub set {
 }
 
 sub _print {print @_}
-
 sub dump {
     my ($self, $full) = @_;
     my $i = 1;
     while (my ($key, $value) = each %{$self->{ht}}) {
-        next if ! $full && $self->{primitives}{$key};
+        next if ! $full && ($self->{primitives}{$key} || $value->is_builtin);
         if ($value->isa(Clause)) {
             _print($i++.". $key: \n");
             do {
@@ -228,12 +228,10 @@ sub dump {
 }
 
 sub list {
-    my ($self, $term, $arity) = @_;
-    my $index = sprintf "%s/%s" =>
-        $term->getfunctor,
-        $arity->getfunctor;
-    print "\n$index: \n";
-    my $head = $self->{ht}{$index};
+    my ($self, $predicate) = @_;
+    print "\n$predicate: \n";
+    my $head = $self->{ht}{$predicate} 
+        or warn "Cannot list unknown predicate ($predicate)";
     while ($head) {
         print "   " . $head->term->to_string;
         if ($head->next) {

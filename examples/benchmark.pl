@@ -1,21 +1,18 @@
-#!/usr/local/bin/perl -l
+#!/usr/local/bin/perl
 
 use strict;
 use warnings;
 use lib ('../lib/', 'lib/');
-use aliased 'AI::Prolog::Parser';
-use aliased 'AI::Prolog::Term';
-use aliased 'AI::Prolog::Engine';
 use Benchmark;
+use AI::Prolog;
 
-my $parser = Parser->new("nrev30");
-my $query  = Term->new($parser);
-my $engine = Engine->new($query,Parser->consult(benchmark()));
-$engine->formatted(1);
-
+my $prolog = AI::Prolog->new(benchmark());
 my $t0 = new Benchmark;
-while (my $result = $engine->results) {
-    print $result;
+for (1 .. 10) {
+    $prolog->query('nrev30.');
+    while (my $result = $prolog->results) {
+        print $_,' ',@$result,$/;
+    }
 }
 my $t1 = new Benchmark;
 my $td = timediff($t1, $t0);

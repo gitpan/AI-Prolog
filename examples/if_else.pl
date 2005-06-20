@@ -1,18 +1,17 @@
 #!/usr/local/bin/perl -l
 use strict;
 use lib qw(../lib/ lib/);
-use AI::Prolog qw/:all/;
+use AI::Prolog;
+use Data::Dumper;
+$Data::Dumper::Terse = 1;
 
-my $database = Parser->consult(<<'END_PROLOG');
+my $prolog = AI::Prolog->new(<<'END_PROLOG');
 thief(badguy).
 steals(PERP, X) :-
  if(thief(PERP), eq(X,rubies), eq(X,nothing)).
 END_PROLOG
-my $query = Term->new("steals(badguy,X).");
-my $engine = Engine->new($query, $database);
-$engine->formatted(1);
-print $engine->results;
+$prolog->query("steals(badguy,X).");
+print Dumper $prolog->results;
 
-$query = Term->new("steals(ovid, X).");
-$engine = Engine->new($query, $database);
-print $engine->results;
+$prolog->query("steals(ovid, X).");
+print Dumper $prolog->results;

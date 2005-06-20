@@ -1,7 +1,7 @@
 package AI::Prolog::TermList;
-$REVISION = '$Id: TermList.pm,v 1.7 2005/02/28 02:32:11 ovid Exp $';
+$REVISION = '$Id: TermList.pm,v 1.9 2005/06/20 02:03:02 ovid Exp $';
 
-$VERSION = 0.02;
+$VERSION = 0.03;
 
 use strict;
 use warnings;
@@ -17,7 +17,7 @@ sub new {
     my $proto = shift;
     my $class = ref $proto || $proto; # yes, I know what I'm doing
     return _new_from_term($class, @_)          if 1 == @_ && $_[0]->isa(Term);
-    return _new_from_parser($class, @_)        if 1 == @_ && $_[0]->isa(Parser); # aargh! Lack of MMD sucks
+    return shift->_termlist($class)            if 1 == @_ && $_[0]->isa(Parser); # aargh! Lack of MMD sucks
     return _new_from_term_and_next($class, @_) if 2 == @_;
     if (@_) {
         require Carp;
@@ -38,62 +38,6 @@ sub _new_from_term {
     return $self;
 }
 
-sub _new_from_parser {
-    my ($class, $ps) = @_;
-    my $self = $class->new;
-    my @ts   = Term->new($ps);
-    $ps->skipspace;
-
-    if ($ps->current eq ':') {
-        $ps->advance;
-
-        if ($ps->current eq '=') {
-            # we're parsing a primitive
-            $ps->advance;
-            $ps->skipspace;
-            my $id = $ps->getnum;
-            $ps->skipspace;
-            $self->{term} = $ts[0];
-            $self->{next} = Primitive->new($id);
-        }
-        elsif ($ps->current ne '-') {
-            $ps->parseerror("Expected '-' after ':'");
-        }
-        else {
-            $ps->advance;
-            $ps->skipspace;
-
-            push @ts => Term->new($ps);
-            $ps->skipspace;
-
-            while ($ps->current eq ',') {
-                $ps->advance;
-                $ps->skipspace;
-                push @ts => Term->new($ps);
-                $ps->skipspace;
-            }
-
-            my @tsl;
-            for my $j (reverse 1 .. $#ts) {
-                $tsl[$j] = $self->new($ts[$j], $tsl[$j+1]);
-            }
-
-            $self->{term} = $ts[0];
-            $self->{next} = $tsl[1];
-        }
-    }
-    else {
-        $self->{term} = $ts[0];
-        $self->{next} = undef;
-    }
-
-    if ($ps->current ne '.') {
-        $ps->parseerror("Expected '.' Got '@{[$ps->current]}'");
-    }
-    $ps->advance;
-    return $self;
-}
-
 sub _new_from_term_and_next {
     my ($class, $term, $next) = @_;
     my $self = $class->_new_from_term($term);
@@ -101,7 +45,7 @@ sub _new_from_term_and_next {
     return $self;
 }
 
-sub term       { shift->{term}       }
+sub term { shift->{term} }
 
 sub next {
     my $self = shift;

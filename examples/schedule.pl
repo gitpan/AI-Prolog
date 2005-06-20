@@ -17,7 +17,7 @@ use aliased 'AI::Prolog';
 
 my $prolog = Prolog->new(<<'END_PROLOG');
 member(X,[X|Xs]).
-member(X,[Y|Ys]) :- member(X,Ys).
+member(X,[_|Ys]) :- member(X,Ys).
 
 scheduler(L) :- makeList(L,4), different(L).
 
@@ -37,13 +37,13 @@ classtime(evening).
 
 classroom(X) :- member(X, [room1,room2]).
 
-different([NULL1]).
-different([course(Teacher,Time,NULL2)|Rest]) :- 
-    member(course(Teacher,Time,NULL3),Rest), 
+different([_]).
+different([course(Teacher,Time,_)|Rest]) :- 
+    member(course(Teacher,Time,_),Rest), 
     !, fail.
-different([course(NULL4,Time,Room)|T]) :- 
-    member(course(NULL5,Time,Room),T), !, fail.
-different([NULL6|T]) :- different(T).
+different([course(_,Time,Room)|T]) :- 
+    member(course(_,Time,Room),T), !, fail.
+different([_|T]) :- different(T).
 END_PROLOG
 
 use Data::Dumper;

@@ -6,7 +6,7 @@ use aliased 'AI::Prolog';
 
 my $prolog = Prolog->new(<<'END_PROLOG');
 member(X,[X|Xs]).
-member(X,[Y|Ys]) :- member(X,Ys).
+member(X,[_|Ys]) :- member(X,Ys).
 
 teacher(Person) :- member(Person, [randal,bob,sally]).
 classroom(Room) :- member(Room,   [class1,class2,class3]).

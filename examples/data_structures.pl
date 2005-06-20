@@ -7,6 +7,9 @@ use Data::Dumper;
 $Data::Dumper::Indent = 0;
 
 use AI::Prolog;
+
+# note that the following line sets an experimental interface option
+AI::Prolog->raw_results(0);
 my $database = <<'END_PROLOG';
 append([], X, X).
 append([W|X],Y,[W|Z]) :- append(X,Y,Z).

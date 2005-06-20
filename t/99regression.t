@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 80math.t,v 1.4 2005/02/28 02:57:17 ovid Exp $';
+# '$Id: 99regression.t,v 1.2 2005/05/13 17:23:17 ovid Exp $';
 use warnings;
 use strict;
 #use Test::More tests => 33;

@@ -5,18 +5,16 @@
 use strict;
 use warnings;
 use lib ('../lib/', 'lib');
-use aliased 'AI::Prolog::Parser';
-use aliased 'AI::Prolog::Term';
-use aliased 'AI::Prolog::Engine';
+use AI::Prolog;
 
-my $database = Parser->consult(<<'END_PROLOG');
+my $prolog = AI::Prolog->new(<<'END_PROLOG');
 perform(grasp, 
         state(middle, middle, onbox, hasnot),
         state(middle, middle, onbox, has)).
 
 perform(climb, 
         state(MP, BP, onfloor, H),
-        state(MP, BP, onbox, H)).
+        state(MP, BP, onbox,   H)).
 
 perform(push(P1,P2), 
         state(P1, P1, onfloor, H),
@@ -26,16 +24,13 @@ perform(walk(P1,P2),
         state(P1, BP, onfloor, H),
         state(P2, BP, onfloor, H)).
 
-getfood(state(Bogus1,Bogus2,Bogus3,has)).
+getfood(state(_,_,_,has)).
 
 getfood(S1) :- perform(Act, S1, S2),
               nl, print('In '), print(S1), print(' try '), print(Act), nl,
               getfood(S2).
 END_PROLOG
 
-my $parser = Parser->new("getfood(state(atdoor,atwindow,onfloor,hasnot)).");
-my $query  = Term->new($parser);
-my $engine = Engine->new($query,$database);
-Engine->formatted(1);
-
-print $engine->results;
+$prolog->query("getfood(state(atdoor,atwindow,onfloor,hasnot)).");
+$prolog->results; # note that everything is done internally.
+                  # there's no need to process the results

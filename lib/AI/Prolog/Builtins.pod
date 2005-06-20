@@ -4,26 +4,7 @@ AI::Prolog::Builtins - Builtin predicates that AI::Prolog supports
 
 =head1 REVISION
 
- $Id: Builtins.pod,v 1.7 2005/02/28 02:57:17 ovid Exp $
-
-=head1 MATH
-
-Math has been available in L<AI::Prolog> since version 0.62.  It is hoped that
-it is fairly robust, but it should be noted that it is implemented via
-predicates rather than operators.  This simplified the the implementation
-tremendously.
-
-Number may be integers, floats, doubles, etc.  A number that starts with a minus
-sign (-) is considered negative.  No number may end in a decimal point as the
-period is interpreted as the end of a clause.  The following is therefore a 
-syntax error:
-
- is(X, plus(5, 7.)).
-
-Omit the period after the number or put a zero after it:
-
- is(X, plus(5, 7)).
- is(X, plus(5, 7.0)).
+ $Id: Builtins.pod,v 1.8 2005/06/20 07:36:48 ovid Exp $
 
 =head2 Comments
 
@@ -84,6 +65,13 @@ change in the future.  See C<retract(X)>.
 
 Invokes C<X> as a goal.
 
+=item * C<consult(Filename)>.
+
+Supplied the name of a file containing Prolog code, this will consult the
+Prolog code in the file and add its contents to the current knowledgebase.
+
+Will warn if the file cannot be opened.
+
 =item * C<div(X,Y)>.
 
 Succeeds if both terms are bound.  The value of the term is X / Y.
@@ -91,9 +79,17 @@ Use with C<is(X,Y)>.
 
  is(X, div(N,3)).
 
+This is the internal form of the infix operator:
+ 
+ N / 3.
+
 =item * C<eq(X, Y).>
 
 Succeeds if C<X> and C<Y> are equal.
+
+This is the internal form of the infix operator:
+
+ X == Y.
 
 =item * C<fail.>
 
@@ -107,9 +103,18 @@ know should not succeed.
 
 Succeeds if both terms are bound and X >= Y.
 
-=item * C<gt(X,Y)>.
+This is the internal form of the infix operator:
+
+ X >= Y.
+
+=item * C<gt(X,Y)>. (deprecated)
 
 Succeeds if both terms are bound and X > Y.
+
+This is the internal form of the infix operator:
+
+ X > Y.
+
 
 =item * C<if(X, Y, Z).>
 
@@ -127,17 +132,41 @@ and equal.
 
 All other conditions result in failure.
 
+This is the internal form of the infix operator:
+
+ X is Y.
+
 =item * C<le(X,Y)>.
 
 Succeeds if both terms are bound and X <= Y.
 
+This is the internal form of the infix operator:
+
+ X <= Y.
+
 =item * C<listing.>
 
-Dumps a listing of all predicates and how they are defined.
+Dumps a listing of all user-defined predicates and how they are defined.
+
+=item * C<listing(X).>
+
+Dumps a listing of the requested predicate.  C<X> must a variable or string
+instantiated in I<functor/arity>) form.  Note that, unlike most Prolog's, this
+means that the followig will not work:
+
+ listing(foo/2).
+
+Use this instead:
+
+ listing('foo/2').
 
 =item * C<lt(X,Y)>.
 
 Succeeds if both terms are bound and X < Y.
+
+This is the internal form of the infix operator:
+
+ X < Y.
 
 =item * C<minus(X,Y)>.
 
@@ -146,6 +175,10 @@ Use with C<is(X,Y)>.
 
  is(X, minus(N,1)).
 
+This is the internal form of the infix operator:
+
+ N - 1.
+
 =item * C<mod(X,Y)>.
 
 Succeeds if both terms are bound.  The value of the term is X % Y. (modulus)
@@ -153,12 +186,28 @@ Use with C<is(X,Y)>.
 
  is(X, mod(N,3)).
 
+This is the internal form of the infix operator:
+
+ N % 3.
+
 =item * C<mult(X,Y)>.
 
 Succeeds if both terms are bound.  The value of the term is X * Y.
 Use with C<is(X,Y)>.
 
  is(X, mult(N,3)).
+
+This is the internal form of the infix operator:
+
+ N * 3.
+
+=item * C<ne(X, Y).>
+
+Succeeds if C<X> and C<Y> cannot be proven to be equal.
+
+This is the internal form of the infix operator:
+
+ X \= Y.
 
 =item * C<nl>
 
@@ -239,9 +288,7 @@ TODO list for those I am inclined to fix.
 
 Use C<if(IF, THEN, ELSE)> instead.
 
- = and \= not available.
-
-Use C<eq(X,Y)> and C<not(eq(X,Y))> instead.
+Chaining terms with a semicolon for "or" does not work.  Use C<or/2> instead.
 
 =head1 TODO
 
@@ -250,25 +297,90 @@ want you to be aware of what's coming.
 
 =over 4
 
-=item * Anonymous variables
-
- steals(badguy, _).
-
-Currently, that doesn't work.  Make up a variable name and only use it once.
-
 =item * Improve printing.
 
 There are some bugs with printing and escaping characters.  Maybe I'll look
 into them :)
 
-=item * Math.
+=item * More builtins.
 
-Math is hard.  So we don't have it, but we will and we'll probably have it in
-the form of system predicates that call out to Perl.  We can define most of
-what we need logically, but it's very slow and complicated, so we won't do
-that.
+Currently, we only have a tiny subset of builtins available.  More are coming.
 
 =back
+
+=head1 MATH
+
+Since version .70, math is fully available in C<AI::Prolog>.  Note that math is
+implemented via the
+L<AI::Prolog::Parser::PreProcessor::Math|AI::Prolog::Parser::PreProcessor::Math>
+module.  This module rewrites Prolog math to an internal, predicate-based form
+with the L<AI::Prolog::Parser|AI::Prolog::Parser> can parse.  This may cause
+confusion when debugging.
+
+ X is 5 + 7.
+ % internally converted to 
+ % is(X, plus(5, 7)).
+
+The math predicates are officially deprecated and I<cannot> be used in the same
+expression with regular Prolog math.  
+
+Number may be integers, floats, doubles, etc.  A number that starts with a
+minus sign (-) is considered negative.  No number may end in a decimal point as
+the period is interpreted as the end of a clause.  The following is therefore a
+syntax error:
+
+ X is 5. + 7.
+
+Unfortunately, the parser doesn't yet yell about that.  We'll try and figure
+out why later.
+
+Omit the period after the number or put a zero after it:
+
+ X is 5.0 + 7.
+ X is 5 + 7.
+
+Because numbers use Perl scalars, you may mix types (ints and floats) and they
+will behave as you expect in Perl.
+
+Precedence is C<*> and C</>, left to right, followed by C<+> and C<->, left to
+right followed by C<%>, left to right.  (I probably should change that.)
+Naturally, parentheses may be used for grouping:
+
+ X is 3 * 5 + 2.   % is(X, plus(mult(3, 5), 2)).
+ X is 3 * (5 + 2). % is(X, mult(3, plus(5, 2))).
+
+When using math, note that C<is> is similar to Perl's assignment operator, C<=>.
+This can be confusing.
+
+ X is 3 + 2.
+
+Sets C<X> to the value of C<5>.  
+
+If C<X> is already instantiated, this goal succeeds if the value of C<X> is the
+value of the result of the right-hand side of the equation.  Internally, if X is not
+instantiated, it looks like this:
+
+ is(5, plus(3,2)).
+
+The C<=> operator tries to unify the left-hand side with the right-hand side:
+
+ X = 3 + 2.
+
+If C<X> is already instantiated, this goal succeeds if the value of C<X> is the
+same goal as the right-hand side of the equation.  Internally, if X is not
+instantiated, it looks like this:
+
+ eq(plus(3,2), plus(3,2)).
+
+When you first start using Prolog, you probably was C<is> instead of C<=>.
+
+Logical comparisons are straightforward:
+
+ 3 >= X.
+ Y > (4 + 3) * X.
+ X == Y. % a test for equality
+ X \= Y. % Not equal.  See caveats for ne/2
+ % etc.
 
 =head1 BUGS
 

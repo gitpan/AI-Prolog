@@ -1,8 +1,8 @@
 #!/usr/bin/perl
-# '$Id: 20term.t,v 1.3 2005/02/13 21:01:02 ovid Exp $';
+# '$Id: 20term.t,v 1.4 2005/05/14 18:03:05 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 80;
+use Test::More tests => 85;
 #use Test::More 'no_plan';
 
 my $CLASS;
@@ -145,3 +145,11 @@ can_ok $term, 'refresh';
 #diag $term->to_string;
 #$term2 = $term->refresh([undef, $term]);
 #diag $term2->to_string;
+
+$parsed = Parser->new(q{stuph(_)});
+ok $term = $CLASS->new($parsed),
+    'We should be able to create a new term from a parser object and handle quotes';
+is $term->functor, 'stuph', '... and the functor should match the parser functor';
+is $term->arity, 1, '... and the arity should match the parser arity';
+is @{$term->args}, 1, '... and it should have 1 arg';
+is $term->bound, 1, '... but it should be bound to a value!';

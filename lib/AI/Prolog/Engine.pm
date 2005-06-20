@@ -1,5 +1,5 @@
 package AI::Prolog::Engine;
-$REVISION = '$Id: Engine.pm,v 1.9 2005/02/28 02:57:17 ovid Exp $';
+$REVISION = '$Id: Engine.pm,v 1.11 2005/06/20 07:36:48 ovid Exp $';
 $VERSION = '0.1';
 use strict;
 use warnings;
@@ -58,6 +58,16 @@ sub raw_results {
     return $RAW_RESULTS;
 }
 
+my $BUILTIN = 0;
+sub _adding_builtins {
+    my $self = shift;
+    if (@_) {
+        $BUILTIN = shift;
+        return $self;
+    }
+    return $BUILTIN;
+}
+
 sub new {
     my ($class, $term, $prog) = @_;
     my $self = bless {
@@ -82,8 +92,10 @@ sub new {
     # index to the primitive and add the corresponding definition to
     # @PRIMITIVES.
     eval {
+        $self->_adding_builtins(1);
         $self->{_db} = Parser->consult(<<'        END_PROG', $prog);
             eq(X,X).
+            ne(X, Y) :- not(eq(X,Y)).
             if(X,Y,Z) :- once(wprologtest(X,R)) , wprologcase(R,Y,Z).
             wprologtest(X,yes) :- call(X). wprologtest(X,no). 
             wprologcase(yes,X,Y) :- call(X). 
@@ -97,9 +109,11 @@ sub new {
             !          :=  1.
             call(X)    :=  2. 
             fail       :=  3. 
+            consult(X) :=  4.
             assert(X)  :=  5.
             retract(X) :=  7.
             listing    :=  8.
+            listing(X) :=  9.
             print(X)   := 10.
             println(X) := 11.
             nl         := 12. 
@@ -121,6 +135,7 @@ sub new {
             % if(X, R  ).
             once(X)  :- call(X), !.
         END_PROG
+        $self->_adding_builtins(0);
     };
     if ($@) {
         require Carp;
@@ -382,6 +397,21 @@ $PRIMITIVES[3] = sub { # fail
     FAIL;
 };
 
+$PRIMITIVES[4] = sub {
+    my ($self, $term, $c) = @_;
+    my $file = $term->getarg(0)->getfunctor;
+    local *FH;
+    if (open FH, "< $file") {
+        my $prolog = do { local $/; <FH> };
+        $self->{_db}->consult($prolog);
+        return CONTINUE;
+    }
+    else {
+        warn "Could not open ($file) for reading: $!";
+        return FAIL;
+    }
+};
+
 $PRIMITIVES[5] = sub { # assert(X)
     my ($self, $term, $c) = @_;
     $self->{_db}->assert($term->getarg(0));
@@ -394,13 +424,20 @@ $PRIMITIVES[7] = sub { # retract(X)
         $self->backtrack;
         return FAIL;
     }
-    $self->{_cp}->clause($self->{_retractClause});
+    $self->{_cp}->clause($self->{_retractClause}); # if $self->{_cp}; # doesn't work
     CONTINUE;
 };
 
 $PRIMITIVES[8] = sub { # listing
     my $self = shift;
     $self->{_db}->dump(0);
+    CONTINUE;
+};
+
+$PRIMITIVES[9] = sub { # listing(X)
+    my ($self, $term, $c) = @_;
+    my $predicate = $term->getarg(0)->getfunctor;
+    $self->{_db}->list($predicate);
     CONTINUE;
 };
 

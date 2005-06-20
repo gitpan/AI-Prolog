@@ -16,7 +16,7 @@ $prolog->query('solve( p(2,2), L).') if $query == 3;
 
 my $t0 = new Benchmark;
 my $results = $prolog->results;
-print Dumper($results->L);
+print Dumper($results);
 my $t1 = new Benchmark;
 my $td = timediff($t1, $t0);
 print "the code took:",timestr($td),"\n";

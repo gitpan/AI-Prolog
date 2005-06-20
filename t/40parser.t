@@ -1,8 +1,8 @@
 #!/usr/bin/perl
-# '$Id: 40parser.t,v 1.4 2005/02/28 02:32:11 ovid Exp $';
+# '$Id: 40parser.t,v 1.5 2005/05/14 18:03:05 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 71;
+use Test::More tests => 76;
 #use Test::More 'no_plan';
 use Test::MockModule;
 
@@ -58,6 +58,12 @@ $parser->skipspace;
 is $parser->current, 'p', '... and calling skipspace will move the parser to the next non-whitespace character';
 is $parser->_start, 0, '... and it will not change the starting position';
 is $parser->_posn, 3, '... but the position will indicate the new position';
+
+can_ok $parser, 'peek';
+is $parser->peek, '(', '... and calling it should return the next character';
+is $parser->current, 'p', '... and leave the current character intact';
+is $parser->_start, 0, '... and it will not change the starting position';
+is $parser->_posn, 3, '... or the current position';
 
 $parser = $CLASS->new('  /* comment */ p(x)');
 $parser->skipspace;

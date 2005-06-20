@@ -1,5 +1,28 @@
 Revision history for Perl extension AI::Prolog.
 
+0.7   Mon June 20, 2005 (Happy Birthday to me)
+      Parsing errors now attempt to report the line number of the
+        error.
+      Added new predicates:
+        consult/1
+        listing/1
+        ne/2
+      Updated the license information display for aiprolog shell.
+      Modified listing/0 to not show builtins.
+      Added math preprocessor.  This transforms proper Prolog math
+        into internal predicates the parser recognizes:
+
+        X is N + 1. % is(X, plus(N, 1)).
+        
+      Pushed all parsing back to the Parser class.  No more parsing
+        in TermList and Term :)
+      Added anonymous variables:  foo(bar, _, baz).  I don't have
+        any efficiency gains from this (yet) because they're just
+        variables with hidden names, but they work.
+      Added Test::Exception to the PREREQ_PM (thanks to rjray for
+        pointing that out).
+      Updated the docs and examples.
+
 0.65  Wed May 11, 2005
       Added Term::ReadLine support to aiprolog shell.
       Added Term::ReadKey support to aiprolog shell.
@@ -8,13 +31,13 @@ Revision history for Perl extension AI::Prolog.
 0.64  Mon May 09, 2005
       Change default behavior to AI::Prolog->raw_results(1).
       Added quote() method to allow Perl variables to be quoted
-      and used at Prolog terms.
+        and used at Prolog terms.
       Added list() method to allow a Perl list to be turned into
-      a Prolog list.
+        a Prolog list.
 
 0.63  Wed May 04, 2005
       Allow parser to properly handle positive and negative numbers
-      and decimal points.
+        and decimal points.
       Added pow(X,Y).
       Eliminated studlyCaps methods.
       Added trace. and notrace.
@@ -59,17 +82,17 @@ Revision history for Perl extension AI::Prolog.
       Pulled engine backtracking out into its own method.
 
       Reduced the scope of many of the Engine::_run variables to ensure data
-      wasn't leaking.
+        wasn't leaking.
 
       Added simple "aiprolog" shell.
 
       Added cut operator, retract(X), and assert(X).
 
       Added more examples and simple adventure game to both demonstrate the shell
-      and how Prolog works.
+        and how Prolog works.
 
       Completely reworked the engine internals to allow new predicates to be
-      easily added.
+        easily added.
 
       * XXX Also screwed up the numbering scheme.  Grumble XXX *
 
@@ -77,13 +100,13 @@ Revision history for Perl extension AI::Prolog.
       Added support for quoting terms.  
       
       Added Engine->formatted method which allows results to be returned as
-      either strings or as data structures.  The latter is more useful.
+        either strings or as data structures.  The latter is more useful.
 
       When using AI::Prolog, the results() method now returns a "results"
-      object.
+        object.
 
       The AI::Prolog interface has been cleaned up and use of the supporting
-      modules is now officially discouraged.
+        modules is now officially discouraged.
 
       Massive documentation update.
 
@@ -91,7 +114,7 @@ Revision history for Perl extension AI::Prolog.
       Added tests for built-in predicates.
 
       Added query() function to AI::Logic::Engine to allow successive queries
-      without a new bootstrap.
+        without a new bootstrap.
 
 0.02  Sun Jan 23, 2005
       First public release of AI::Prolog.

@@ -2,9 +2,9 @@ use ExtUtils::MakeMaker qw/WriteMakefile prompt/;
 
 my (@program, @extra_modules);
 print <<"END_NOTE";
-The 'aiprolog' shell is optional.  If you choose to install it,
-Term::ReadLine and Term::ReadKey will be added to your list of 
-prerequisites.
+
+The 'aiprolog' shell is optional.  If you choose to install it, Term::ReadLine
+and Term::ReadKey will be added to your list of prerequisites.
 
 END_NOTE
 
@@ -28,6 +28,7 @@ WriteMakefile(
         'Pod::Usage'        => 1.12,
         'Regexp::Common'    => 2.119,
         'Test::Differences' => 0.47,
+        'Test::Exception'   => 0.20,
         'Test::MockModule'  => 0.04,
         'Text::Balanced'    => 1.95,
         'Text::Quote'       => 0.03,

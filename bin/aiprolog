@@ -9,6 +9,7 @@ use Term::ReadKey;
 use Pod::Usage 1.12;
 use aliased 'AI::Prolog';
 AI::Prolog::Engine->formatted(1);
+# '$Id: aiprolog,v 1.6 2005/06/20 07:36:48 ovid Exp $';
 
 my $term = Term::ReadLine->new('AI::Prolog');
 my $OUT  = $term->OUT || \*STDOUT;
@@ -24,10 +25,18 @@ if ($file) {
 my $prolog  = Prolog->new($program);
 my $version = Prolog->VERSION;
 
-print $OUT "Welcome to AI::Prolog v $version\n\nType '?' for help.\n\n";
+print $OUT <<"END_WELCOME";
+Welcome to AI::Prolog v $version
+Copyright (c) 2005, Curtis "Ovid" Poe.
+AI::Prolog comes with ABSOLUTELY NO WARRANTY.  This library is free software;
+you can redistribute it and/or modify it under the same terms as Perl itself.
+
+Type '?' for help.
+END_WELCOME
 
 my $COMMAND = qr/^%\s*/;
 my $RESULTS = 0;
+my $MORE    = 1;
 while (1) {
     my $query = $term->readline("?- ");
     chomp $query;
@@ -44,6 +53,12 @@ while (1) {
         if ($query =~ /$COMMAND(?:help)/i) {
             help();
         }
+        elsif ($query =~ /${COMMAND}more/i) {
+            $MORE = 1;
+        }
+        elsif ($query =~ /${COMMAND}no\s*more/i) {
+            $MORE = 0;
+        }
         next;
     }
     
@@ -54,7 +69,7 @@ while (1) {
     }
     $RESULTS = 1;
     show_results($prolog);
-    while (user_wants_more()) {
+    while ($MORE && user_wants_more()) {
         show_results($prolog);
     }
 }
@@ -115,6 +130,9 @@ currently accepts.
 
 Commands specific to aiprolog shell:
 
+ "% more"     -- enables prompting for more results (default)
+ "% no more"  -- disables prompting for more results
+ "% nomore"   -- same as "no more"
  "% halt"     -- stops the shell
  "% help"     -- display this message
 
@@ -134,6 +152,10 @@ Save the following to a file named "append.pro":
 Then load it into the C<aiprolog> shell by typing this at a shell:
 
  aiprolog path/to/append.pro
+
+Alternatively, once in the shell, you can load the program with:
+
+ consult('path/to/append.prog').
 
 In the shell, you should be greeted by a query prompt "?-".  At this prompt,
 you can issue queries against the program.  Try entering the following query:
@@ -188,6 +210,12 @@ If you are hoping to use this to play the bundled "Spider" game, I recommend
 the following:
 
  aiprolog location/of/spider.pro
+
+ ?- % no more
+
+That disables the pause where the shell waits for you to hit a ';' to get more
+results or hit enter to continue.  It gets very annoying while playing the
+game, though it's useful when you really want to program.
 
 Then issue the "start" command (defined in "spider.pro").
 
