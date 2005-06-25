@@ -1,5 +1,18 @@
 Revision history for Perl extension AI::Prolog.
 
+0.71  Sat June 25, 2005
+      Removed _failgoal in Engine.pm.  We now backtrack if we need
+        new results.
+      Added several new regression tests.
+      Fixed bug where code was not warning on unknown predicates.
+        (Doug Wilson)
+      Fixed bug where tracing fails when it tries to print a non-
+        existent "next_clause".  (Doug Wilson)
+      retract/1 now works correctly.  (Doug Wilson)
+      Fixed unification bug that crept in in .62.
+      Added data/sleepy.pro, a game that wasn't working because of
+        the retract/1 bug.
+
 0.7   Mon June 20, 2005 (Happy Birthday to me)
       Parsing errors now attempt to report the line number of the
         error.

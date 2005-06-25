@@ -30,6 +30,7 @@ WriteMakefile(
         'Test::Differences' => 0.47,
         'Test::Exception'   => 0.20,
         'Test::MockModule'  => 0.04,
+        'Test::Warn'        => 0.08,
         'Text::Balanced'    => 1.95,
         'Text::Quote'       => 0.03,
         @extra_modules

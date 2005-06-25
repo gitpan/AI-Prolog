@@ -1,5 +1,5 @@
 package AI::Prolog::Term;
-$REVISION = '$Id: Term.pm,v 1.8 2005/06/20 02:03:02 ovid Exp $';
+$REVISION = '$Id: Term.pm,v 1.9 2005/06/25 23:06:53 ovid Exp $';
 
 $VERSION = '0.06';
 use strict;
@@ -38,14 +38,7 @@ sub occurcheck {
 sub prettyprint { 1 }
 
 my $CUT = Cut->new(0);
-sub CUT {
-    my $class = shift;
-    if ($@) {
-        $CUT = shift;
-        return $class;
-    }
-    return $CUT;
-}   
+sub CUT { $CUT }
 
 sub new {
     my $proto = shift;
@@ -114,12 +107,13 @@ sub _new_from_functor_and_arity {
     } => $class;
 }
 
-sub varnum  { $VARNUM          } # class method
-sub functor { shift->{functor} }
-sub arity   { shift->{arity}   }
-sub args    { shift->{args}    }
-sub varid   { shift->{varid}   }
-sub ref     { shift->{ref}     }
+sub varnum    { $VARNUM          } # class method
+sub functor   { shift->{functor} }
+sub arity     { shift->{arity}   }
+sub args      { shift->{args}    }
+sub varid     { shift->{varid}   }
+sub ref       { shift->{ref}     }
+sub predicate { sprintf "%s/%d" => $_[0]->getfunctor, $_[0]->getarity }
 
 sub deref {
     my $self = shift;
@@ -244,14 +238,17 @@ sub occurs1 {
 # $stack: the stack is used to store the address of variables which
 # are bound by the unification.  This is needed when backtracking.
 
+
 sub unify {
     my ($self, $term, $stack) = @_;
-    $term = $term->{ref} if $term->{bound} and $term->{deref};
-    $self = $self->{ref} if $self->{bound} and $self->{deref};
+    return $self->ref->unify($term, $stack) if $self->{bound} and $self->{deref};
+    return $self->unify($term->ref, $stack) if $term->{bound} and $term->{deref};
     if ($self->{bound} and $term->{bound}) { # bound and not deref
-        if ($self->{functor} eq $term->getfunctor && $self->{arity} == $term->getarity) {
-            for my $i (0 .. $self->{arity} - 1) {
-                return unless $self->{args}[$i]->unify($term->getarg($i), $stack);
+        if ($self->functor eq $term->getfunctor && $self->arity == $term->getarity) {
+            for my $i (0 .. $self->arity - 1) {
+                if (! $self->{args}[$i]->unify($term->getarg($i), $stack)) {
+                    return;
+                }
             }
             return 1;
         }
@@ -261,8 +258,8 @@ sub unify {
     } # at least one arg not bound ...
     if ($self->{bound}) {
         # added missing occurcheck
-        if ($OCCURCHECK) {
-            if ($self->occurs($term->{varid})) {
+        if ($self->occurcheck) {
+            if ($self->occurs($term->varid)) {
                 return;
             }
         }
@@ -271,7 +268,7 @@ sub unify {
         return 1;
     }
     # do occurcheck if turned on
-    return if $OCCURCHECK && $term->occurs($self->{varid});
+    return if $self->occurcheck && $term->occurs($self->varid);
     $self->bind($term);
     push @{$stack} => $self; # save for backtracking
     return 1;

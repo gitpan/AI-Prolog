@@ -1,5 +1,5 @@
 package AI::Prolog::TermList;
-$REVISION = '$Id: TermList.pm,v 1.9 2005/06/20 02:03:02 ovid Exp $';
+$REVISION = '$Id: TermList.pm,v 1.10 2005/06/25 23:06:53 ovid Exp $';
 
 $VERSION = 0.03;
 
@@ -72,21 +72,6 @@ sub next_clause {
     return $self->{next_clause};
 }
 
-sub _to_string {
-    my $self = shift;
-    my $to_string = "[" . $self->term->to_string;
-    my $tl = $self->next;
-    my $i  = 0;
-    while ($tl && ++$i < 3) {
-        my $to_string .= ", ", $tl->term->to_string;
-        $tl = $tl->next;
-    }
-    if ($tl) {
-        $to_string .= ", ...";
-    }
-    return "$to_string]";
-}
-
 sub to_string {
     my $self = shift;
     my $to_string = "[" . $self->term->to_string;
@@ -100,10 +85,8 @@ sub to_string {
 
 sub resolve { # a.k.a. lookup_in
     my ($self, $kb) = @_;
-    my $key = sprintf "%s/%s" =>
-        $self->{term}->getfunctor,
-        $self->{term}->getarity;
-    $self->next_clause($kb->get($key));
+    my $predicate = $self->{term}->predicate;
+    $self->next_clause($kb->get($predicate));
 }
 
 1;

@@ -1,6 +1,6 @@
 package AI::Prolog::Engine;
-$REVISION = '$Id: Engine.pm,v 1.11 2005/06/20 07:36:48 ovid Exp $';
-$VERSION = '0.1';
+$REVISION = '$Id: Engine.pm,v 1.12 2005/06/25 23:06:53 ovid Exp $';
+$VERSION = '0.2';
 use strict;
 use warnings;
 
@@ -73,19 +73,15 @@ sub new {
     my $self = bless {
         # The stack holds choicepoints and a list of variables
         # which need to be un-bound upon backtracking.
-	    _stack         => [],
-        # We use a hash to store the program
-        _db            => KnowledgeBase->new, 
-        _goal          => TermList->new($term,undef), # TermList
-	    _call          => $term, # Term
-        # Used to time how long queries take
-    	time           => undef,
+	    _stack          => [],
+        _db             => KnowledgeBase->new, 
+        _goal           => TermList->new($term,undef), # TermList
+	    _call           => $term, # Term
         # A bookmark to the fail predicate
-	    _failgoal      => undef, # TermList
-        _run_called    => undef,
-        _cp            => undef,
-        _retractClause => undef,
-        _trace         => 0, # whether or not tracing is done
+        _run_called     => undef,
+        _cp             => undef,
+        _retract_clause => undef,
+        _trace          => 0, # whether or not tracing is done
     } => $class;
 
     # to add a new primitive, use the binding operator (:=) to assign a unique
@@ -94,7 +90,6 @@ sub new {
     eval {
         $self->_adding_builtins(1);
         $self->{_db} = Parser->consult(<<'        END_PROG', $prog);
-            eq(X,X).
             ne(X, Y) :- not(eq(X,Y)).
             if(X,Y,Z) :- once(wprologtest(X,R)) , wprologcase(R,Y,Z).
             wprologtest(X,yes) :- call(X). wprologtest(X,no). 
@@ -105,13 +100,14 @@ sub new {
             or(X,Y) :- call(Y).
             true. 
             % the following are handled internally.  Don't use the
-            % := operator.
+            % := operator.  Eventually, I'll make this a fatal error.
             !          :=  1.
             call(X)    :=  2. 
             fail       :=  3. 
             consult(X) :=  4.
             assert(X)  :=  5.
             retract(X) :=  7.
+            retract(X) :- retract(X).
             listing    :=  8.
             listing(X) :=  9.
             print(X)   := 10.
@@ -125,15 +121,18 @@ sub new {
             ge(X,Y)    := 19.
             le(X,Y)    := 20.
             var(X)     := 23.
+            %seq(X)     := 30.
             gensym(X)  := 33.
-            % commented out while we're still figuring out
-            % what's wrong.
-            % seq(X)   := 30.
-            % if(X, Yes, R ) :- seq(X), !, seq(Yes).
-            % if(X, R  , No) :- seq(No).
-            % if(X, Yes) :- seq(X), !, seq(Yes).
-            % if(X, R  ).
-            once(X)  :- call(X), !.
+            eq(X,X).
+            not(X) :- X, !, fail.
+            not(X).
+            %if(X, Yes, _ ) :- seq(X), !, seq(Yes).
+            %if(X, _  , No) :- seq(No).
+            %if(X, Yes) :- seq(X), !, seq(Yes).
+            %if(X, _  ).
+            %or(X,Y) :- seq(X).
+            %or(X,Y) :- seq(Y).
+            once(X) :- X , !.
         END_PROG
         $self->_adding_builtins(0);
     };
@@ -141,11 +140,8 @@ sub new {
         require Carp;
         Carp::croak("Engine->new failed.  Cannot parse default program: $@");
     }
-    $self->{_retractClause} = $self->{_db}->get("retract/1");
+    $self->{_retract_clause} = $self->{_db}->get("retract/1");
     $self->{_goal}->resolve($self->{_db});
-    # XXX Can these go soon?
-    $self->{_failgoal} = TermList->new(Term->new("fail",0), undef);
-    $self->{_failgoal}->resolve($self->{_db});
     return $self;
 }
 
@@ -153,40 +149,33 @@ sub query {
     my ($self, $query)   = @_;
     $self->{_stack}      = [];
     $self->{_run_called} = undef;
-    $self->{_goal}       = TermList->new($query, undef);
+    $self->{_goal}       = TermList->new($query);
     $self->{_call}       = $query;
     $self->{_goal}->resolve($self->{_db});
-    $self->{_failgoal}   = TermList->new(Term->new("fail",0), undef);
-    $self->{_failgoal}->resolve($self->{_db});
     return $self;
 }
 
-sub _stack    { shift->{_stack}    }
-sub _db       { shift->{_db}       }
-sub _goal     { shift->{_goal}     }
-sub _call     { shift->{_call}     }
-sub _failgoal { shift->{_failgoal} }
+sub _stack    { shift->{_stack} }
+sub _db       { shift->{_db}    }
+sub _goal     { shift->{_goal}  }
+sub _call     { shift->{_call}  }
 
 sub dump_goal {
     my ($self) = @_;
     if ($self->{_goal}) {
-        print "\n= Goals: "  .$self->{_goal}->to_string;
-        print "\n==> Try:  " .$self->{_goal}->next_clause->to_string."\n";
+        _print("\n= Goals: "  .$self->{_goal}->to_string);
+        _print("\n==> Try:  " .$self->{_goal}->next_clause->to_string."\n")
+            if $self->{_goal}->next_clause;
     }
     else {
-        print "\n= Goals: null\n";
+        _print("\n= Goals: null\n");
     }
 }
-
-# adds fail to the goal and lets the engine do the rest
-#sub more {shift->results};
 
 sub results {
     my $self = shift;
     if ($self->{_run_called}) {
-        # XXX we should probably just backtrack instead.
-        $self->{_goal} = TermList->new(Term->new("fail",0), $self->{_goal});
-        $self->{_goal}->resolve($self->{_db});
+        return unless $self->backtrack;
     }
     else {
         $self->{_run_called} = 1;
@@ -210,11 +199,9 @@ sub _run {
             $self->trace(1);
         }
         $self->dump_goal if $self->{_trace};
-        $self->step if $self->{_step_flag};
+        $self->step      if $self->{_step_flag};
             
-        unless ($self->{_goal} && $self->{_goal}->next_clause) {
-            # XXX This is handled very differently in XProlog
-            # Damn.
+        unless ($self->{_goal}) {
             # we've succeeded.  return results
             if ($self->formatted) {
                 return $self->_call->to_string;
@@ -231,17 +218,11 @@ sub _run {
             require Carp;
             Carp::croak("Engine->run fatal error.  goal->term is null!");
         }
-        my $func  = $self->{_goal}{term}->getfunctor;
-        my $arity = $self->{_goal}{term}->getarity;
-
         unless ($self->{_goal}->{next_clause}) {
-            warn "$func/$arity undefined!"; # this was wrapped in an "if trace"
-            unless ($self->backtrack) {
-                return;
-            }
-            else {
-                next; # restart the while loop
-            }
+            my $predicate  = $self->{_goal}{term}->predicate;
+            warn "$predicate undefined!" if $self->trace;
+            next if $self->backtrack; # if we backtracked, try again
+            return;                   # otherwise, we failed
         }
 
         my $clause = $self->{_goal}->{next_clause};
@@ -292,19 +273,14 @@ sub _run {
             }
         }
         else { # unify failed.  Must backtrack
-            if (! $self->backtrack) {
-                return;
-            }
+            return unless $self->backtrack;
         }
     }
 }
 
 sub backtrack {
     my $self = shift;
-    my $found;
-    if ($self->{_trace}) {
-        print " <<== Backtrack: \n";
-    }
+    _print(" <<== Backtrack: \n") if $self->{_trace};
     while (@{$self->{_stack}}) {
         my $o = pop @{$self->{_stack}};
 
@@ -315,15 +291,11 @@ sub backtrack {
             $self->{_goal} = $o->{goal};
             # XXX This could be very dangerous if we accidentally try
             # to assign a term to itself!  See ChoicePoint->next_clause
-            $self->{_goal}{next_clause} = $o->{clause};
-            $found = 1;
-            last;
-        } # elsif integer, iterative deepening
-        # not implemented yet
+            $self->{_goal}->next_clause($o->{clause});
+            return 1;
+        }
     }
-    # stack is empty.  We have not found a choice point.
-    # this means we have failed.
-    return $found;
+    return;
 }
 
 sub _print { # convenient testing hook
@@ -353,7 +325,7 @@ sub _splice_goal_list {
     my @vars;
     my $i = 0;
     $term = $term->getarg(0);
-    while ($term->getfunctor ne "null") {
+    while ($term && $term->getfunctor ne "null") {
         $t2 = $term->getarg(0);
         if ($t2 eq Term->CUT) {
             $p = TermList->new(Cut->new( scalar @{$self->{_stack}}));
@@ -424,7 +396,7 @@ $PRIMITIVES[7] = sub { # retract(X)
         $self->backtrack;
         return FAIL;
     }
-    $self->{_cp}->clause($self->{_retractClause}); # if $self->{_cp}; # doesn't work
+    $self->{_cp}->clause($self->{_retract_clause}); # if $self->{_cp}; # doesn't work
     CONTINUE;
 };
 

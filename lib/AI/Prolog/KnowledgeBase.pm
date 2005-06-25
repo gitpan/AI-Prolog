@@ -1,5 +1,5 @@
 package AI::Prolog::KnowledgeBase;
-$REVISION = '$Id: KnowledgeBase.pm,v 1.4 2005/06/20 07:36:48 ovid Exp $';
+$REVISION = '$Id: KnowledgeBase.pm,v 1.5 2005/06/25 23:06:53 ovid Exp $';
 $VERSION = '0.02';
 use strict;
 use warnings;
@@ -58,10 +58,8 @@ sub consult {
 sub add_primitive {
     my ($self, $clause) = @_;
     my $term  = $clause->term;
-    my $index = sprintf "%s/%s" =>
-        $term->getfunctor,
-        $term->getarity;
-    my $c = $self->{ht}{$index};
+    my $predicate = $term->predicate;
+    my $c = $self->{ht}{$predicate};
     if ($c) {
         while ($c->next_clause) {
             $c = $c->next_clause;
@@ -69,29 +67,27 @@ sub add_primitive {
         $c->next_clause($clause);
     }
     else {
-        $self->{primitives}{$index} = 1;
-        $self->{ht}{$index} = $clause;
+        $self->{primitives}{$predicate} = 1;
+        $self->{ht}{$predicate} = $clause;
     }
 }
 
 sub add_clause {
     my ($self, $clause) = @_;
     my $term = $clause->term;
-    my $index = sprintf "%s/%s" =>
-        $term->getfunctor,
-        $term->getarity;
-    if ($self->{primitives}{$index}) {
+    my $predicate = $term->predicate;
+    if ($self->{primitives}{$predicate}) {
         require Carp;
-        Carp::carp("Trying to modify primitive predicate: $index");
+        Carp::carp("Trying to modify primitive predicate: $predicate");
         return;
     }
-    unless ($index eq $self->{oldIndex}) {
-        delete $self->{ht}{$index};
-        $self->{ht}{$index} = $clause;
-        $self->{oldIndex} = $index;
+    unless ($predicate eq $self->{oldIndex}) {
+        delete $self->{ht}{$predicate};
+        $self->{ht}{$predicate} = $clause;
+        $self->{oldIndex} = $predicate;
     }
     else {
-        my $c = $self->{ht}{$index};
+        my $c = $self->{ht}{$predicate};
         while ($c->next_clause) {
             $c = $c->next_clause;
         }
@@ -105,12 +101,12 @@ sub assert {
     # XXX whoops.  Need to check exact semantics in Term
     my $newC = Clause->new($term->deref,undef);
     
-    my $index = sprintf "%s/%s" => $term->getfunctor, $term->getarity;
-    if ($self->{primitives}{$index}) {
-        require Carp && Carp::carp("Trying to assert a primitive: $index");
+    my $predicate = $term->predicate;
+    if ($self->{primitives}{$predicate}) {
+        require Carp && Carp::carp("Trying to assert a primitive: $predicate");
         return;
     }
-    my $c = $self->{ht}{$index};
+    my $c = $self->{ht}{$predicate};
     if ($c) {
         while ($c->next_clause) {
             $c = $c->next_clause;
@@ -118,38 +114,34 @@ sub assert {
         $c->next_clause($newC);
     }
     else {
-        $self->{ht}{$index} = $newC;
+        $self->{ht}{$predicate} = $newC;
     }
 }
 
 sub asserta {
     my ($self, $term) = @_;
-    my $index = sprintf "%s/%s" =>
-        $term->getfunctor,
-        $term->getarity;
-    if ($self->{primitives}{$index}) {
-        require Carp && Carp::carp("Trying to assert a primitive: $index");
+    my $predicate = $term->predicate;
+    if ($self->{primitives}{$predicate}) {
+        require Carp && Carp::carp("Trying to assert a primitive: $predicate");
         return;
     }
     $term = $term->clean_up;
     my $newC = Clause->new($term->deref, undef);
-    my $c    = $self->{ht}{$index};
+    my $c    = $self->{ht}{$predicate};
     $newC->next_clause($c);
-    $self->{ht}{$index} = $newC;
+    $self->{ht}{$predicate} = $newC;
 }
 
 sub retract {
     my ($self, $term, $stack) = @_;
-    my $newC = Clause->new($term);#, undef);
-    my $index = sprintf "%s/%s" =>
-        $term->getfunctor,
-        $term->getarity;
-    if (exists $self->{primitives}{$index}) {
-        require Carp && Carp::carp("Trying to retract a primitive: $index");
+    my $newC = Clause->new($term, undef);#, undef); 
+    my $predicate = $term->predicate;
+    if (exists $self->{primitives}{$predicate}) {
+        require Carp && Carp::carp("Trying to retract a primitive: $predicate");
         return;
     }
     my $cc;
-    my $c = $self->{ht}{$index};
+    my $c = $self->{ht}{$predicate};
 
     while ($c) {
         my $vars = [];
@@ -161,10 +153,10 @@ sub retract {
                 $cc->next_clause($c->next_clause);
             }
             elsif (! $c->next_clause) {
-                delete $self->{ht}{$index};
+                delete $self->{ht}{$predicate};
             }
             else {
-                $self->{ht}{$index} = $c->next_clause;
+                $self->{ht}{$predicate} = $c->next_clause;
             }
             return 1;
         }
@@ -180,14 +172,12 @@ sub retract {
 
 sub retractall {
     my ($self, $term, $arity) = @_;
-    my $index = sprintf "%s/%s" =>
-        $term->getfunctor,
-        $term->getarity;
-    if ($self->{primitives}{$index}) {
-        require Carp && Carp::carp("Trying to retractall primitives: $index");
+    my $predicate = $term->predicate;
+    if ($self->{primitives}{$predicate}) {
+        require Carp && Carp::carp("Trying to retractall primitives: $predicate");
         return;
     }
-    delete $self->{ht}{$index};
+    delete $self->{ht}{$predicate};
     return 1;
 }
 
@@ -204,6 +194,7 @@ sub set {
 }
 
 sub _print {print @_}
+
 sub dump {
     my ($self, $full) = @_;
     my $i = 1;

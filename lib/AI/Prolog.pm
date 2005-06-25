@@ -1,6 +1,6 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.16 2005/06/20 07:36:48 ovid Exp $';
-$VERSION  = '0.7';
+$REVISION = '$Id: Prolog.pm,v 1.17 2005/06/25 23:06:53 ovid Exp $';
+$VERSION  = '0.71';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -126,8 +126,9 @@ find it for us.
 
 =head1 QUICKSTART
 
-For those who like to just dive right in, this distribution contains a simple
-Prolog shell called C<aiprolog> and a short adventure game called C<spider.pro>.
+For those who like to just dive right in, this distribution contains a Prolog
+shell called C<aiprolog> and two short adventure games, C<spider.pro> and
+C<sleepy.pro>.
 
 See the C<bin/> and C<data/> directories in the distribution.
 

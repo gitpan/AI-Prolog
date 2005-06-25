@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         AI-Prolog
-version:      0.7
+version:      0.71
 version_from: lib/AI/Prolog.pm
 installdirs:  site
 requires:
@@ -16,6 +16,7 @@ requires:
     Test::Differences:             0.47
     Test::Exception:               0.2
     Test::MockModule:              0.04
+    Test::Warn:                    0.08
     Text::Balanced:                1.95
     Text::Quote:                   0.03
 

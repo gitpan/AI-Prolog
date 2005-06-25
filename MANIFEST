@@ -1,6 +1,7 @@
 bin/aiprolog
 Changes
 data/spider.pro
+data/sleepy.pro
 examples/append.pl
 examples/benchmark.pl
 examples/cut.pl

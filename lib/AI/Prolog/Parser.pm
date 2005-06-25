@@ -1,5 +1,5 @@
 package AI::Prolog::Parser;
-$REVISION = '$Id: Parser.pm,v 1.7 2005/06/20 07:36:48 ovid Exp $';
+$REVISION = '$Id: Parser.pm,v 1.8 2005/06/25 23:06:53 ovid Exp $';
 
 $VERSION = '0.10';
 use strict;
@@ -260,10 +260,16 @@ sub consult {
         my $head = $tls->term;
         my $body = $tls->next;
 
-        my $add = ($body && $body->isa(Primitive))? 'add_primitive' : 'add_clause';
+        my $is_primitive = $body && $body->isa(Primitive);
+        unless ($is_primitive) {
+            my $predicate = $head->predicate;
+            $is_primitive = exists $db->{primitives}{$predicate};
+        }
+        my $add = $is_primitive ? 'add_primitive' : 'add_clause';
         my $clause = Clause->new($head,$body);
-        $clause->is_builtin(1) if Engine->_adding_builtins;
-        $db->$add($clause);
+        my $adding_builtins = Engine->_adding_builtins;
+        $clause->is_builtin(1) if $adding_builtins;
+        $db->$add($clause, $adding_builtins);
         $self->skipspace;
         $self->nextclause; # new set of vars
     }
