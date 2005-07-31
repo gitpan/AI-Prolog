@@ -51,6 +51,9 @@ isa_ok $engine, $CLASS, '... and the object it returns';
     ge/2
     gensym/1
     gt/2
+    halt/0
+    help/0
+    help/1
     if/3
     is/2
     le/2
@@ -71,6 +74,8 @@ isa_ok $engine, $CLASS, '... and the object it returns';
     var/1
     wprologcase/3
     wprologtest/2
+    write/1
+    writeln/1
 };
 
 @keys = sort keys %{$database->ht};

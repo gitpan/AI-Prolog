@@ -84,7 +84,7 @@ is $term->functor, 'steals', '... and it should have the functor we specify';
 is $term->arity, 2, '... and the blank term should have an arity of 0';
 is_deeply $term->args, [], '... and it should have no args';
 is $term->bound, 1, '... but it should be bound to a value!';
-ok ! defined $term->varid, '... and it should not have an id';
+is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
 is $term->to_string, 'steals()',
@@ -100,7 +100,7 @@ is $term->functor, 'stuph', '... and the functor should match the parser functor
 is $term->arity, 1, '... and the arity should match the parser arity';
 is @{$term->args}, 1, '... and it should have 1 arg';
 is $term->bound, 1, '... but it should be bound to a value!';
-ok ! defined $term->varid, '... and it should not have an id';
+is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
 is $term->to_string, 'stuph(_0)',
@@ -114,7 +114,7 @@ is $term->functor, 'stuph', '... and the functor should match the parser functor
 is $term->arity, 2, '... and the arity should match the parser arity';
 is @{$term->args}, 2, '... and it should have 1 arg';
 is $term->bound, 1, '... but it should be bound to a value!';
-ok ! defined $term->varid, '... and it should not have an id';
+is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
 is $term->to_string, 'stuph(notvar,varnot)',
@@ -128,7 +128,7 @@ is $term->functor, 'stuph', '... and the functor should match the parser functor
 is $term->arity, 1, '... and the arity should match the parser arity';
 is @{$term->args}, 1, '... and it should have 1 arg';
 is $term->bound, 1, '... but it should be bound to a value!';
-ok ! defined $term->varid, '... and it should not have an id';
+is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
 is $term->to_string, 'stuph(not var)',
@@ -142,7 +142,7 @@ is $term->functor, 'stuph', '... and the functor should match the parser functor
 is $term->arity, 2, '... and the arity should match the parser arity';
 is @{$term->args}, 2, '... and it should have 1 arg';
 is $term->bound, 1, '... but it should be bound to a value!';
-ok ! defined $term->varid, '... and it should not have an id';
+is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
 is $term->to_string, 'stuph(some string o stuff,not var)',

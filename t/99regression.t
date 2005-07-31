@@ -5,7 +5,7 @@ use strict;
 use Test::More tests => 5;
 #use Test::More qw/no_plan/;
 use Test::MockModule;
-use Test::Warn;
+use Test::Exception;
 
 BEGIN
 {
@@ -21,7 +21,6 @@ i_am_at(top).
 down :- retract(i_am_at(top)),assert(i_am_at(bottom)).
 END_PROLOG
 
-use Carp;
 $prolog->query('down.');
 is $prolog->results, 'down', 'retract/1 should succeed';
 $prolog->query('i_am_at(X)');
@@ -69,8 +68,8 @@ is_deeply \@results, \@expected, 'The .62 unify bug should be bye-bye';
 
 my $faux_engine = Test::MockModule->new(Engine);
 my @stdout;
-$faux_engine->mock(_print => sub { push @stdout => @_ });
+$faux_engine->mock(_warn => sub { push @stdout => @_ });
 $prolog->query('no_such_predicate(X).');
-$prolog->trace(1);
-warning_is {$prolog->results} 'no_such_predicate/1 undefined!',
-    'Non-existent predicates should warn if we are tracing';
+$prolog->results;
+like $stdout[0], qr{WARNING:  undefined predicate \(no_such_predicate/1\)},
+    'Non-existent predicates should warn';

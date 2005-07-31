@@ -43,7 +43,7 @@ Use this instead:
 
 =over 4
 
-=item * C<!>.
+=item !/0
 
 The "cut" operator.  This is used when you wish to tell Prolog that you only
 need to satisfy a goal once.  For example, if you wish to deny someone the
@@ -54,25 +54,25 @@ have more than one overdue video doesn't matter.
 See the C<cut.pl> program in the C<examples/> directory that comes with this
 distribution.
 
-=item * C<assert(X)>.
+=item assert/1
 
 Add new facts to the database.  Only facts can be added, not rules.  This may
 change in the future.  See C<retract(X)>.
 
  assert(loves(ovid,perl)).
 
-=item * C<call(X)>.
+=item call/1
 
 Invokes C<X> as a goal.
 
-=item * C<consult(Filename)>.
+=item consult/1
 
 Supplied the name of a file containing Prolog code, this will consult the
 Prolog code in the file and add its contents to the current knowledgebase.
 
 Will warn if the file cannot be opened.
 
-=item * C<div(X,Y)>.
+=item div/2
 
 Succeeds if both terms are bound.  The value of the term is X / Y.
 Use with C<is(X,Y)>.
@@ -83,7 +83,7 @@ This is the internal form of the infix operator:
  
  N / 3.
 
-=item * C<eq(X, Y).>
+=item eq/2
 
 Succeeds if C<X> and C<Y> are equal.
 
@@ -91,7 +91,7 @@ This is the internal form of the infix operator:
 
  X == Y.
 
-=item * C<fail.>
+=item fail/0
 
 This goal always fails.  Useful when you've reached a condition you
 know should not succeed.
@@ -99,7 +99,7 @@ know should not succeed.
   kill(Hero, Beast) :-
     not(has_weapon(Hero)), fail.
 
-=item * C<ge(X,Y)>.
+=item ge/2
 
 Succeeds if both terms are bound and X >= Y.
 
@@ -107,7 +107,7 @@ This is the internal form of the infix operator:
 
  X >= Y.
 
-=item * C<gt(X,Y)>. (deprecated)
+=item gt/2
 
 Succeeds if both terms are bound and X > Y.
 
@@ -115,8 +115,11 @@ This is the internal form of the infix operator:
 
  X > Y.
 
+=item halt/1
 
-=item * C<if(X, Y, Z).>
+In the C<aiprolog> shell, exist shell.  Currently has no other effect.
+
+=item if/3
 
 If C<X> succeeds as a goal, try C<Y> as a goal.  Otherwise, try C<Z>.
 
@@ -124,9 +127,9 @@ If C<X> succeeds as a goal, try C<Y> as a goal.  Otherwise, try C<Z>.
  steals(PERP, X) :-
    if(thief(PERP), eq(X,rubies), eq(X,nothing)).
 
-=item * C<is(X,Y).>
+=item is/2
 
-If X is unbound and Y is bound to a number, the goal succeeds and  X becomes
+If X is unbound and Y is bound to a number, the goal succeeds and X becomes
 bound to the value of Y.  Otherwise, succeeds if both terms are bound, numbers,
 and equal.
 
@@ -136,7 +139,7 @@ This is the internal form of the infix operator:
 
  X is Y.
 
-=item * C<le(X,Y)>.
+=item le/2
 
 Succeeds if both terms are bound and X <= Y.
 
@@ -144,11 +147,11 @@ This is the internal form of the infix operator:
 
  X <= Y.
 
-=item * C<listing.>
+=item listing/0
 
 Dumps a listing of all user-defined predicates and how they are defined.
 
-=item * C<listing(X).>
+=item listing/1
 
 Dumps a listing of the requested predicate.  C<X> must a variable or string
 instantiated in I<functor/arity>) form.  Note that, unlike most Prolog's, this
@@ -160,7 +163,7 @@ Use this instead:
 
  listing('foo/2').
 
-=item * C<lt(X,Y)>.
+=item lt/2
 
 Succeeds if both terms are bound and X < Y.
 
@@ -168,7 +171,7 @@ This is the internal form of the infix operator:
 
  X < Y.
 
-=item * C<minus(X,Y)>.
+=item minus/2
 
 Succeeds if both terms are bound.  The value of the term is X - Y.
 Use with C<is(X,Y)>.
@@ -179,7 +182,7 @@ This is the internal form of the infix operator:
 
  N - 1.
 
-=item * C<mod(X,Y)>.
+=item mod/2
 
 Succeeds if both terms are bound.  The value of the term is X % Y. (modulus)
 Use with C<is(X,Y)>.
@@ -190,7 +193,7 @@ This is the internal form of the infix operator:
 
  N % 3.
 
-=item * C<mult(X,Y)>.
+=item mult/2
 
 Succeeds if both terms are bound.  The value of the term is X * Y.
 Use with C<is(X,Y)>.
@@ -201,7 +204,7 @@ This is the internal form of the infix operator:
 
  N * 3.
 
-=item * C<ne(X, Y).>
+=item ne/2
 
 Succeeds if C<X> and C<Y> cannot be proven to be equal.
 
@@ -209,37 +212,37 @@ This is the internal form of the infix operator:
 
  X \= Y.
 
-=item * C<nl>
+=item nl/0
 
 Prints a newline.
 
-=item * C<not(X).>
+=item not/1
 
 Succeeds if C<X> cannot be proven.  This is not negation as we're used to
 seeing it in procedural languages.
 
-=item * C<notrace.>
+=item notrace/0
 
 Turns off tracing of Prolog's attempt to satisfy goals.
 
-=item * C<once(X)>
+=item once/1
 
 Stop solving for C<X> if C<X> succeeds.  Defined as:
 
  once(X) :- X, !;
 
-=item * C<or(X, Y)>
+=item or/2
 
 Succeeds as a goal if either C<X> or C<Y> succeeds.
 
-=item * C<plus(X,Y)>.
+=item plus/2
 
 Succeeds if both terms are bound.  The value of the term is X + Y.
 Use with C<is(X,Y)>.
 
  is(X, plus(N,1)).
 
-=item * C<print(Term)>.
+=item print/1
 
 Prints the current Term.  If the term is an unbound variable, it will print the
 an underscore followed by the internal variable number (e.g., "_284").
@@ -248,34 +251,47 @@ an underscore followed by the internal variable number (e.g., "_284").
  print("Something").  % prints "Something"
  print(Something).    % prints whatever variable Something is bound to 
 
-=item * C<println(Term)>.
+=item println/1
 
 Same as C<print(Term)>, but automatically prints a newline at the end.
 
-=item * C<pow(X,Y)>.
+=item pow/2
 
 Succeeds if both terms are bound.  The value of the term is X ** Y 
 (X raised to the Y power).
 Use with C<is(X,Y)>.
 
-=item * C<retract(X)>.
+=item retract/1
 
 Remove facts from the database.  You cannot remove rules.  This may change in
 the future.  See C<assert(X)>.
 
  retract(loves(ovid,java)).
 
-=item * C<trace.>
+=item trace/0
 
 Turns on tracing of Prolog's attempt to satisfy goals.
 
-=item * C<true.>
+=item true/0
 
 True goal.  Automatically succeeds.
 
-=item * C<var(X)>.
+=item var/1
 
 Succeeds if X is an unbound variable.  Otherwise, this goal fails.
+
+=item write/1
+
+Prints the current Term.  If the term is an unbound variable, it will print the
+an underscore followed by the internal variable number (e.g., "_284").
+
+ write(ovid).         % prints "ovid"
+ write("Something").  % prints "Something"
+ write(Something).    % prints whatever variable Something is bound to 
+
+=item writeln/1
+
+Same as C<write(Term)>, but automatically prints a newline at the end.
 
 =back
 
@@ -297,12 +313,12 @@ want you to be aware of what's coming.
 
 =over 4
 
-=item * Improve printing.
+=item Improve printing.
 
 There are some bugs with printing and escaping characters.  Maybe I'll look
 into them :)
 
-=item * More builtins.
+=item More builtins.
 
 Currently, we only have a tiny subset of builtins available.  More are coming.
 

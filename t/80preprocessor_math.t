@@ -2,7 +2,7 @@
 # '$Id: 80preprocessor_math.t,v 1.2 2005/06/20 07:36:48 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 134;
+use Test::More tests => 140;
 #use Test::More qw/no_plan/;
 
 my $CLASS;
@@ -44,7 +44,7 @@ foreach my $not_math_term (@not_math_terms) {
     ok ! $CLASS->_simple_math_term($not_math_term), "$not_math_term should not match : simple math term";
 }
 
-foreach my $op (qw{- + * / %}) {
+foreach my $op (qw{- + * / % **}) {
     ok $CLASS->_op($op), "$op matches : op";
 }
 
@@ -58,6 +58,7 @@ my @rhs = (
     'A % 2',
     '17.2 * A % 2',
     'A+B+C+D+2',
+    '7/2 ** 4',
 );
 foreach my $simple_rhs (@rhs) {
     ok $CLASS->_simple_rhs($simple_rhs), "$simple_rhs matches : simple rhs";
@@ -194,6 +195,13 @@ is_deeply $CLASS->_lex($rhs), [
     [qw/ ATOM 3 /]
 ], "$rhs : lexes properly";
 
+$rhs = 'A ** 3';
+is_deeply $CLASS->_lex($rhs), [
+    [qw/ ATOM A  /],
+    [qw/ OP   ** /],
+    [qw/ ATOM 3  /]
+], "$rhs : lexes properly";
+
 $rhs = '3 * ( 7 +4)';
 is_deeply $CLASS->_lex($rhs), [
     [qw/ ATOM   3 /],
@@ -203,6 +211,17 @@ is_deeply $CLASS->_lex($rhs), [
     [qw/ OP     + /],
     [qw/ ATOM   4 /],
     [qw/ RPAREN ) /],
+], "$rhs : lexes properly";
+
+$rhs = '3 ** ( 7 +4)';
+is_deeply $CLASS->_lex($rhs), [
+    [qw/ ATOM   3  /],
+    [qw/ OP     ** /],
+    [qw/ LPAREN (  /],
+    [qw/ ATOM   7  /],
+    [qw/ OP     +  /],
+    [qw/ ATOM   4  /],
+    [qw/ RPAREN )  /],
 ], "$rhs : lexes properly";
 
 $rhs = '3 * ( 7 + -4)';
@@ -238,54 +257,65 @@ is_deeply $CLASS->_lex($rhs), [
     [qw/ RPAREN ) /],
 ], "$rhs : lexes properly";
 
-can_ok $CLASS, '_reduce';
-is $CLASS->_reduce([
+$rhs = 'E ** ( PI * I )';
+is_deeply $CLASS->_lex($rhs), [
+  [ 'ATOM',   'E' ],
+  [ 'OP',    '**' ],
+  [ 'LPAREN', '(' ],
+  [ 'ATOM',  'PI' ],
+  [ 'OP',     '*' ],
+  [ 'ATOM',   'I' ],
+  [ 'RPAREN', ')' ],
+], "$rhs : lexes properly";
+
+can_ok $CLASS, '_parse';
+is $CLASS->_parse([
     [qw/ ATOM 5 /],
     [qw/ OP   * /],
     [qw/ ATOM 4 /],
-]), 'mult(5, 4)', '... and simple expressions should reduce properly';
+]), 'mult(5, 4)', '... and simple expressions should parse properly';
 
-is $CLASS->_reduce([
+is $CLASS->_parse([
     [qw/ ATOM 5 /],
     [qw{ OP   / }],
     [qw/ ATOM 4 /],
-]), 'div(5, 4)', '... and simple expressions should reduce properly';
+]), 'div(5, 4)', '... and simple expressions should parse properly';
 
-is $CLASS->_reduce([
+is $CLASS->_parse([
     [qw/ ATOM 5 /],
     [qw{ OP   + }],
     [qw/ ATOM 4 /],
-]), 'plus(5, 4)', '... and simple expressions should reduce properly';
+]), 'plus(5, 4)', '... and simple expressions should parse properly';
 
-is $CLASS->_reduce([
+is $CLASS->_parse([
     [qw/ ATOM 5 /],
     [qw{ OP   - }],
     [qw/ ATOM 4 /],
-]), 'minus(5, 4)', '... and simple expressions should reduce properly';
+]), 'minus(5, 4)', '... and simple expressions should parse properly';
 
-is $CLASS->_reduce([
+is $CLASS->_parse([
     [qw/ ATOM 5 /],
     [qw{ OP   % }],
     [qw/ ATOM 4 /],
-]), 'mod(5, 4)', '... and simple expressions should reduce properly';
+]), 'mod(5, 4)', '... and simple expressions should parse properly';
 
-is $CLASS->_reduce([
+is $CLASS->_parse([
     [qw/ ATOM 5 /],
     [qw{ OP   + }],
     [qw/ ATOM 4 /],
     [qw{ OP   * }],
     [qw/ ATOM 7.2/],
-]), 'plus(5, mult(4, 7.2))', '... and compound expressions should reduce properly';
+]), 'plus(5, mult(4, 7.2))', '... and compound expressions should parse properly';
 
-is $CLASS->_reduce([
+is $CLASS->_parse([
     [qw/ ATOM 5 /],
     [qw{ OP   * }],
     [qw/ ATOM 4 /],
     [qw{ OP   + }],
     [qw/ ATOM 7.2/],
-]), 'plus(mult(5, 4), 7.2)', '... and compound expressions should reduce properly';
+]), 'plus(mult(5, 4), 7.2)', '... and compound expressions should parse properly';
 
-is $CLASS->_reduce([
+is $CLASS->_parse([
     [qw/ ATOM   5 /],
     [qw/ OP     * /],
     [qw/ LPAREN ( /],
@@ -337,6 +367,9 @@ my @expressions = (
     
     'X \= 9 / (3 + (4+7) % ModValue) + 2 / (3+7).',
     'ne(X, plus(div(9, mod(plus(3, plus(4, 7)), ModValue)), div(2, plus(3, 7)))).',
+
+    '-1 is E ** (PI * I).',
+    'is(-1, pow(E, mult(PI, I))).',
 );
 
 while (my ($before, $after) = splice @expressions, 0, 2) {

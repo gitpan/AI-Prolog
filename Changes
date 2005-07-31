@@ -1,5 +1,17 @@
 Revision history for Perl extension AI::Prolog.
 
+0.72  Sun Jule 31, 2005
+      Move builtins to their own class, AI::Prolog::Engine::Builtins
+      Non-existent predicates now issue a warning even if trace is off.
+      Added new predicates:
+        halt/0 -- currently a no-op outside of the aiprolog shell
+        help/0 -- list all builtin predicates for which help is available
+        help/1 -- list help for builtin predicate
+        write/1
+        writeln/1
+      Added ** operator (pow/1) to math preprocessor.  Leaving it out
+        earlier was an oversight.
+
 0.71  Sat June 25, 2005
       Removed _failgoal in Engine.pm.  We now backtrack if we need
         new results.

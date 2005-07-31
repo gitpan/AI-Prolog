@@ -9,6 +9,8 @@ use aliased 'AI::Prolog::Parser::PreProcessor::Math';
 
 sub process {
     my ($class, $prolog) = @_;
+    # why the abstraction?  Because I want DCGs in here, too.  Maybe 
+    # other stuff ...
     $prolog = Math->process($prolog);
     return $prolog;
 }
@@ -23,7 +25,7 @@ AI::Prolog::Parser::PreProcessor - The AI::Prolog Preprocessor
 
 =head1 SYNOPSIS
 
- my $program = AI::Prolog::Parser::Macro->process($prolog_text).
+ my $program = AI::Prolog::Parser::Preprocessor->process($prolog_text).
 
 =head1 DESCRIPTION
 

@@ -17,6 +17,7 @@ lib/AI/Prolog.pm
 lib/AI/Prolog/Builtins.pod
 lib/AI/Prolog/ChoicePoint.pm
 lib/AI/Prolog/Engine.pm
+lib/AI/Prolog/Engine/Primitives.pm
 lib/AI/Prolog/Introduction.pod
 lib/AI/Prolog/KnowledgeBase.pm
 lib/AI/Prolog/Parser.pm

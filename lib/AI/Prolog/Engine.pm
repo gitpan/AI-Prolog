@@ -16,6 +16,8 @@ use aliased 'AI::Prolog::KnowledgeBase';
 use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::ChoicePoint';
 
+use AI::Prolog::Engine::Primitives;
+
 use constant OnceMark => 'OnceMark';
 
 # The engine is what executes prolog queries.
@@ -33,6 +35,15 @@ sub trace {
         return $self;
     }
     return $self->{_trace};
+}
+
+sub halt {
+    my $self = shift;
+    if (@_) {
+        $self->{_halt} = shift;
+        return $self;
+    }
+    return $self->{_halt};
 }
 
 my $FORMATTED = 1;
@@ -77,11 +88,11 @@ sub new {
         _db             => KnowledgeBase->new, 
         _goal           => TermList->new($term,undef), # TermList
 	    _call           => $term, # Term
-        # A bookmark to the fail predicate
         _run_called     => undef,
         _cp             => undef,
         _retract_clause => undef,
         _trace          => 0, # whether or not tracing is done
+        _halt           => 0, # will stop the aiprolog shell
     } => $class;
 
     # to add a new primitive, use the binding operator (:=) to assign a unique
@@ -101,6 +112,7 @@ sub new {
             true. 
             % the following are handled internally.  Don't use the
             % := operator.  Eventually, I'll make this a fatal error.
+            % See AI::Prolog::Engine::Builtins to see the code for these
             !          :=  1.
             call(X)    :=  2. 
             fail       :=  3. 
@@ -111,7 +123,9 @@ sub new {
             listing    :=  8.
             listing(X) :=  9.
             print(X)   := 10.
+            write(X)   := 10.
             println(X) := 11.
+            writeln(X) := 11.
             nl         := 12. 
             trace      := 13.
             notrace    := 13.
@@ -120,8 +134,11 @@ sub new {
             lt(X,Y)    := 17.
             ge(X,Y)    := 19.
             le(X,Y)    := 20.
+            halt       := 22.
             var(X)     := 23.
             %seq(X)     := 30.
+            help       := 31.
+            help(X)    := 32.
             gensym(X)  := 33.
             eq(X,X).
             not(X) :- X, !, fail.
@@ -220,7 +237,7 @@ sub _run {
         }
         unless ($self->{_goal}->{next_clause}) {
             my $predicate  = $self->{_goal}{term}->predicate;
-            warn "$predicate undefined!" if $self->trace;
+            _warn("WARNING:  undefined predicate ($predicate)\n");
             next if $self->backtrack; # if we backtracked, try again
             return;                   # otherwise, we failed
         }
@@ -301,210 +318,18 @@ sub backtrack {
 sub _print { # convenient testing hook
     print @_;
 }
-        
-sub _remove_choices {
-    # this implements the cut operator
-    my ($self, $varid) = @_;
-    my @stack;
-    my $i = @{$self->{_stack}};
-    while ($i > $varid) {
-        my $o = pop @{$self->{_stack}};
-        unless ($o->isa(ChoicePoint)) {
-            push @stack => $o;
-        }
-        $i--;
-    }
-    while (@stack) {
-        push @{$self->{_stack}} => pop @stack;
-    }
-}
 
-sub _splice_goal_list {
-    my ($self, $term) = @_;
-    my ($t2, $p, $p1, $ptail);
-    my @vars;
-    my $i = 0;
-    $term = $term->getarg(0);
-    while ($term && $term->getfunctor ne "null") {
-        $t2 = $term->getarg(0);
-        if ($t2 eq Term->CUT) {
-            $p = TermList->new(Cut->new( scalar @{$self->{_stack}}));
-        }
-        else {
-            $p = TermList->new( $t2 );
-        }
-        if ($i++ == 0) {
-            $p1 = $ptail = $p;
-        }
-        else {
-            $ptail->next($p);
-            $ptail = $p;
-        }
-        $term = $term->getarg(1);
-    }
-    $ptail->next($self->{_goal}->next);
-    $self->{_goal} = $p1;
-    $self->{_goal}->resolve($self->{_db});
+sub _warn { # convenient testing hook
+    warn @_;
 }
 
 use constant CONTINUE => 1;
 use constant RETURN   => 2;
 use constant FAIL     => ();
-my @PRIMITIVES; # we'll fix this later
-
-$PRIMITIVES[1] = sub { # ! (cut)
-    my ($self, $term, $c) = @_;
-    _remove_choices( $self, $term->varid );
-    CONTINUE;
-};
-
-$PRIMITIVES[2] = sub {  # call(X)
-    my ($self, $term, $c) = @_;
-    $self->{_goal} = TermList->new($term->getarg(0), $self->{_goal}->next);
-    $self->{_goal}->resolve($self->{_db});
-    RETURN;
-};
-
-$PRIMITIVES[3] = sub { # fail
-    FAIL;
-};
-
-$PRIMITIVES[4] = sub {
-    my ($self, $term, $c) = @_;
-    my $file = $term->getarg(0)->getfunctor;
-    local *FH;
-    if (open FH, "< $file") {
-        my $prolog = do { local $/; <FH> };
-        $self->{_db}->consult($prolog);
-        return CONTINUE;
-    }
-    else {
-        warn "Could not open ($file) for reading: $!";
-        return FAIL;
-    }
-};
-
-$PRIMITIVES[5] = sub { # assert(X)
-    my ($self, $term, $c) = @_;
-    $self->{_db}->assert($term->getarg(0));
-    CONTINUE;
-};
-
-$PRIMITIVES[7] = sub { # retract(X)
-    my ($self, $term, $c) = @_;
-    unless ($self->{_db}->retract($term->getarg(0), $self->{_stack})) {
-        $self->backtrack;
-        return FAIL;
-    }
-    $self->{_cp}->clause($self->{_retract_clause}); # if $self->{_cp}; # doesn't work
-    CONTINUE;
-};
-
-$PRIMITIVES[8] = sub { # listing
-    my $self = shift;
-    $self->{_db}->dump(0);
-    CONTINUE;
-};
-
-$PRIMITIVES[9] = sub { # listing(X)
-    my ($self, $term, $c) = @_;
-    my $predicate = $term->getarg(0)->getfunctor;
-    $self->{_db}->list($predicate);
-    CONTINUE;
-};
-
-$PRIMITIVES[10] = sub { # print()
-    my ($self, $term, $c) = @_;
-    _print($term->getarg(0)->to_string);
-    CONTINUE;
-};
-
-$PRIMITIVES[11] = sub { # println()
-    my ($self, $term, $c) = @_;
-    _print($term->getarg(0)->to_string."\n");
-    CONTINUE;
-};
-
-$PRIMITIVES[12] = sub { _print("\n"); CONTINUE }; # nl
-
-$PRIMITIVES[13] = sub { # trace. notrace.
-    my ($self, $term) = @_;
-    $self->{_trace} = $term->getfunctor eq 'trace';
-    _print("Trace " . ($self->{_trace}? "ON" : "OFF"));
-    CONTINUE;
-};
-
-$PRIMITIVES[15] = sub { # is(X,Y)
-    my ($self, $term, $c) = @_;
-    my $rhs = $term->getarg(0)->deref;
-    my $lhs = $term->getarg(1)->value;
-    if ($rhs->is_bound) {
-        my $value = $rhs->value;
-        return FAIL unless looks_like_number($value);
-        return $value == $lhs;
-    }
-    $rhs->bind(Number->new($lhs));
-    push @{$self->{_stack}} => $rhs;
-    CONTINUE;
-};
-
-$PRIMITIVES[16] = sub { # gt(X,Y)
-    my ($self, $term) = @_;
-    return ($term->getarg(0)->value > $term->getarg(1)->value)
-        ? CONTINUE
-        : FAIL;
-};
-
-$PRIMITIVES[17] = sub { # lt(X,Y)
-    my ($self, $term) = @_;
-    return ($term->getarg(0)->value < $term->getarg(1)->value)
-        ? CONTINUE
-        : FAIL;
-};
-
-$PRIMITIVES[19] = sub { # ge(X,Y)
-    my ($self, $term) = @_;
-    return ($term->getarg(0)->value >= $term->getarg(1)->value)
-        ? CONTINUE
-        : FAIL;
-};
-
-$PRIMITIVES[20] = sub { # le(X,Y)
-    my ($self, $term) = @_;
-    return ($term->getarg(0)->value <= $term->getarg(1)->value)
-        ? CONTINUE
-        : FAIL;
-};
-
-$PRIMITIVES[23] = sub { # var(X).
-    my ($self, $term, $c) = @_;
-    return $term->getarg(0)->bound()? FAIL : CONTINUE;
-};
-
-# plus(X,Y)  := 25.
-# minux(X,Y) := 26.
-# mult(X,Y)  := 27.
-# div(X,Y)   := 28.
-# mod(X,Y)   := 29.
-
-$PRIMITIVES[30] = sub { # seq(X)
-    my ($self, $term, $c) = @_;
-    $self->_splice_goal_list( $term );
-    CONTINUE;
-};
-
-my $gensymInt = 0;
-$PRIMITIVES[33] = sub { # gemsym(X)
-    my ($self, $term, $c) = @_;
-    my $t2 = Term->new('v' . $gensymInt++, 0);
-    return $t2->unify($term->getarg(0), $self->{_stack})
-        ? CONTINUE
-        : FAIL;
-};
 
 sub do_primitive { # returns false if fails
     my ($self, $term, $c) = @_;
-    my $primitive = $PRIMITIVES[ $c->ID ]
+    my $primitive = AI::Prolog::Engine::Primitives->find($c->ID)
         or die sprintf "Cannot find primitive for %s (ID: %d)\n", $term->to_string, $c->ID;
     return unless my $result = $primitive->($self, $term, $c);
     return 1 if RETURN == $result;

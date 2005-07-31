@@ -15,6 +15,7 @@ $prolog->query('solve( p(8,8), L).') if $query == 2;
 $prolog->query('solve( p(2,2), L).') if $query == 3;
 
 my $t0 = new Benchmark;
+#$prolog->trace(1);
 my $results = $prolog->results;
 print Dumper($results);
 my $t1 = new Benchmark;

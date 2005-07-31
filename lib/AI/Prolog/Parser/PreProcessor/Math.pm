@@ -8,7 +8,8 @@ use Regexp::Common;
 
 my $var              = qr/[[:upper:]][[:alnum:]_]*/;
 my $num              = $RE{num}{real};
-my $op               = qr{[-+*/%]};
+                       # ** must be before *
+my $op               = qr{(?:\*\*|[-+*/%])};
 my $compare          = qr/(?:(?:\\|=)?=|is|[<>]=?)/;
 my $lparen           = qr/\(/;
 my $rparen           = qr/\)/;
@@ -67,6 +68,7 @@ my %convert = (qw{
     -     minus
     %     mod
     *     mult
+    **    pow
     <     lt
     <=    le
     >     gt
@@ -79,7 +81,7 @@ sub process {
     my ($class, $prolog) = @_;
     while ($prolog =~ $expression) {
         my ($old_expression, $lhs, $comp, $rhs) = ($1, $2, $3, $4);
-        my $new_rhs = $class->_reduce($class->_lex($rhs));
+        my $new_rhs = $class->_parse($class->_lex($rhs));
         my $new_expression = sprintf "%s(%s, %s)" =>
             $convert{$comp},
             $lhs,
@@ -111,12 +113,12 @@ sub _lexer {
             $op_ok = 1, return ['ATOM',    $1] if           $rhs =~ /\G ($simple_math_term) /gcx;
             $op_ok = 0, return ['LPAREN', '('] if           $rhs =~ /\G $lparen             /gcx;
             $op_ok = 1, return ['RPAREN', ')'] if           $rhs =~ /\G $rparen             /gcx;
-            redo LEXER                         if           $rhs =~ /\G \s+          /gcx;
+            redo LEXER                         if           $rhs =~ /\G \s+                 /gcx;
         }
     };
 }
 
-sub _reduce {
+sub _parse {
     my ($class, $tokens) = @_;
     my $parens_left = 1;
     REDUCE: while ($parens_left) {
@@ -135,7 +137,7 @@ sub _reduce {
                     Carp::croak "Parse error in math pre-processor.  Mismatched parens";
                 }
                 $last = $i;
-                $tokens->[$first] = $class->_reduce_group([@{$tokens}[$first + 1 .. $last - 1]]);
+                $tokens->[$first] = $class->_parse_group([@{$tokens}[$first + 1 .. $last - 1]]);
                 undef $tokens->[$_] for $first + 1 .. $last;
                 @$tokens = grep $_ => @$tokens;
                 undef $first;
@@ -145,12 +147,12 @@ sub _reduce {
         }
         $parens_left = 0 unless defined $first;
     }
-    return _as_string($class->_reduce_group($tokens));
+    return _as_string($class->_parse_group($tokens));
 }
 
-sub _reduce_group {
+sub _parse_group {
     my ($class, $tokens) = @_;
-    foreach my $op_re (qr{[*/]}, qr{[+-]}, qr/\%/) {
+    foreach my $op_re (qr{(?:\*\*|[*/])}, qr{[+-]}, qr/\%/) {
         for my $i ( 0 .. $#$tokens) {
             my $token = $tokens->[$i];
             if (ref $token && "@$token" =~ /OP ($op_re)/) {

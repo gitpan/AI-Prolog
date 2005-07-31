@@ -64,6 +64,7 @@ sub _new_from_string {
 
 sub _new_var {
     my $class = shift;
+    #print "*** _new_var @{[$VARNUM+1]}";
     bless {
         functor => undef,
         arity   => 0,
@@ -74,11 +75,13 @@ sub _new_var {
         # if bound and deref are both true, $self is a reference to a ref
         deref   => 0,
         ref     => undef,
+        #source  => "_new_var",
     } => $class;
 }
 
 sub _new_with_id {
     my ($class, $id) = @_;
+    #print "*** _new_with_id: $id";
     bless {
         functor => undef,
         arity   => 0,
@@ -89,21 +92,26 @@ sub _new_with_id {
         # if bound and deref are both true, $self is a reference to a ref
         deref   => 0,
         ref     => undef,
+        #source  => "_new_with_id: $id",
     } => $class;
 }
 
 sub _new_from_functor_and_arity {
     my ($class, $functor, $arity) = @_;
+    my $print_functor = defined $functor ? $functor : 'null';
+    Carp::confess "undefined arity" unless defined $arity;
+    #print "*** _new_from_functor_and_arity: ($print_functor) ($arity)";
     bless {
         functor => $functor,
         arity   => $arity,
         args    => [],
         # if bound is false, $self is a reference to a free variable
         bound   => 1,
-        varid   => undef, # XXX ??
+        varid   => 0, # XXX ??
         # if bound and deref are both true, $self is a reference to a ref
         deref   => 0,
         ref     => undef,
+        #source  => "_new_from_functor_and_arity: ($print_functor) ($arity)",
     } => $class;
 }
 
@@ -234,15 +242,48 @@ sub occurs1 {
     }
 }
 
+# used internally for debugging
+sub _dumpit {
+    local $^W;
+    my $self = shift;
+    my $indent = shift || '';
+    print($indent . "source:  ", $self->{source});
+    print($indent . "bound:  ", ($self->{bound} ? 'true' : 'false'));
+    print($indent . "functor:  ", ($self->{functor} || 'null'));
+    if (! $self->{ref}) {
+        print($indent . "ref:  null");
+    }
+    else {
+        print("\n$indent" . "ref:");
+        $self->{ref}->_dumpit($indent.'  ');
+    }
+    print($indent . "arity:  ", $self->{arity});
+    if (defined $self->{args}[0]) {
+        print($indent."args:");
+        foreach (@{$self->{args}}) {
+            $_->_dumpit($indent . "  ");
+        }
+    }
+    else {
+        print($indent."args:  null");
+    }
+    #print($indent . "args:  ", scalar @{$self->{args}}) if defined $self->{args}[0];
+    print($indent . "deref:  ", ($self->{deref} ? 'true' : 'false'));
+    print($indent . "varid:  ", $self->{varid}, "\n");
+}
+
 # Unification is the basic primitive operation in logic programming.
 # $stack: the stack is used to store the address of variables which
 # are bound by the unification.  This is needed when backtracking.
 
-
+my $unify = 1;
 sub unify {
     my ($self, $term, $stack) = @_;
+    #_dumpit($self);
+    #_dumpit($term);
+    $unify++;
     return $self->ref->unify($term, $stack) if $self->{bound} and $self->{deref};
-    return $self->unify($term->ref, $stack) if $term->{bound} and $term->{deref};
+    return $self->unify($term->ref, $stack) if $term->{bound} and $term->{deref}; # XXX
     if ($self->{bound} and $term->{bound}) { # bound and not deref
         if ($self->functor eq $term->getfunctor && $self->arity == $term->getarity) {
             for my $i (0 .. $self->arity - 1) {
@@ -283,17 +324,20 @@ sub refresh {
     my ($self, $term_aref) = @_;
     if ($self->{bound}) {
         if ($self->{deref}) {
-            $self = $self->{ref};
-            return $self->_getvar($term_aref, $self->{varid})
-                unless $self->{bound};
+            return $self->{ref}->refresh($term_aref);
         }
-        return $self unless $self->{arity};
-        #my $term = $self->dup;
-        my $term = (CORE::ref $self)->_new_from_functor_and_arity($self->{functor},$self->{arity});
-        for my $i (0 .. $self->{arity} - 1) {
-            $term->{args}[$i] = $self->{args}[$i]->refresh($term_aref);
+        else {
+            if (0 == $self->{arity}) {
+                return $self;
+            }
+            else {
+                my $term = (CORE::ref $self)->_new_from_functor_and_arity($self->{functor},$self->{arity});
+                for my $i (0 .. $self->{arity} - 1) {
+                    $term->{args}[$i] = $self->{args}[$i]->refresh($term_aref);
+                }
+                return $term;
+            }
         }
-        return $term;
     }
     # else unbound
     return $self->_getvar($term_aref, $self->{varid});
@@ -430,7 +474,7 @@ sub _clean_up {
         if ($self->{deref}) {
             return $self->{ref}->_clean_up;
         }
-        elsif (! $self->{arity}) {
+        elsif (defined $self->{arity} && 0 == $self->{arity}) {
             return $self;
         }
         else {
@@ -450,7 +494,6 @@ sub _clean_up {
     return $term;
 }
 
-# only used for integer results
 # From XProlog
 sub value {
     # int i, res = 0;

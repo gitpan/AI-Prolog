@@ -344,7 +344,7 @@ sub _termlist {
 # Example: my $term = Term->new(Parser->new("p(1,a(X,b))"));
 sub _term {
     my ($self, $term_class) = @_;
-    my $term = $term_class->new(undef, undef);
+    my $term = $term_class->new(undef, 0);
     my $ts   = [];
     my $i    = 0;
 

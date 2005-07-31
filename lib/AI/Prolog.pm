@@ -1,6 +1,6 @@
 package AI::Prolog;
 $REVISION = '$Id: Prolog.pm,v 1.17 2005/06/25 23:06:53 ovid Exp $';
-$VERSION  = '0.71';
+$VERSION  = '0.72';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -85,6 +85,12 @@ sub quote {
 sub list {
     my $proto = shift;
     return join ", " => map { /^$RE{num}{real}$/ ? $_ : $proto->quote($_) } @_;
+}
+
+sub continue { 
+    my $self = shift;
+    return 1 unless $self->{_engine}; # we haven't started yet!
+    ! $self->{_engine}->halt 
 }
 
 1;
