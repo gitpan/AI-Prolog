@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 35clause.t,v 1.1 2005/02/20 18:27:55 ovid Exp $';
+# '$Id: 35clause.t,v 1.2 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 #use Test::More 'no_plan';
@@ -20,13 +20,13 @@ use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::Term';
 
 can_ok $CLASS, 'new';
-my $parser = Parser->new("p(X,p(X,Y)).");
-ok my $clause = $CLASS->new($parser),
+my $termlist = Parser->new("p(X,p(X,Y)).")->_termlist;
+ok my $clause = $CLASS->new($termlist->term, $termlist->next),
     '... and creating a new clause from a parser object should succeed';
 isa_ok $clause, $CLASS, '... and the object it creates';
 
 can_ok $clause, 'to_string';
-is $clause->to_string, 'p(_0,p(_0,_1)) :- null',
+is $clause->to_string, 'p(A, p(A, B)) :- null',
     '... and its to_string representation should be correct';
 
 can_ok $clause, 'term';
@@ -38,18 +38,19 @@ is $term->arity, 2, '... and the correct arity';
 my $db = Parser->consult('p(this,that).');
 can_ok $clause, 'resolve';
 $clause->resolve($db);
-is $clause->to_string, 'p(_0,p(_0,_1)) :- null',
+is $clause->to_string, 'p(A, p(A, B)) :- null',
     '... and its to_string representation should reflect this';
 
 $db = Parser->consult('p(this,that).');
-$clause = $CLASS->new(Parser->new('p(X,p(X,Y)).'));
-$clause->{definer}[0] = 'anything';
-$clause->resolve($db);
+$termlist = Parser->new('p(X,p(X,Y)).')->_termlist;
+$termlist->{definer}[0] = 'anything';
+$termlist->resolve($db);
 
-$clause = $CLASS->new(Parser->new(<<'END_PROLOG'));
+$termlist = Parser->new(<<"END_PROLOG")->_termlist;
 father(Parent, Child) :-
   male(Parent),
   parent(Parent, Child).
 END_PROLOG
-is $clause->to_string, 'father(_0,_1) :- male(_0) :- parent(_0,_1) :- null',
+$clause = $CLASS->new($termlist->term, $termlist->next);
+is $clause->to_string, "father(A, B) :- \n\tmale(A),\n\tparent(A, B)",
     'Building a complex clause should succeed';

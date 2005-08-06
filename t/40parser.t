@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 40parser.t,v 1.5 2005/05/14 18:03:05 ovid Exp $';
+# '$Id: 40parser.t,v 1.6 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 use Test::More tests => 76;
@@ -143,7 +143,7 @@ is_deeply \@keys, ['owns/2'],
     '... and the keys should be in the form $functor/$arity-$clausenum';
 my $tls = $db->{$keys[0]};
 isa_ok $tls, TermList, '... and object the keys point to';
-is $tls->to_string, 'owns(merlyn,gold) :- null',
+is $tls->to_string, 'owns(merlyn, gold) :- null',
     '... and the termlist should show the correct term(s)';
 
 $parser = $CLASS->new(<<'END_PROLOG');

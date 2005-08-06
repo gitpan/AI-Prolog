@@ -1,6 +1,14 @@
 Revision history for Perl extension AI::Prolog.
 
-0.72  Sun Jule 31, 2005
+0.73  
+      Added AI::Prolog::Cookbook as an introduction to common problems
+        encountered when working with Prolog.
+      TermList->to_string now causes listings to look very similar to
+        SWI-Prolog.  Much easier to read.
+      Term->to_string now identifies variables by letter, not /_\d+/.
+      Completed decoupling of AI::Prolog::Parser from the engine.
+
+0.72  Sun July 31, 2005
       Move builtins to their own class, AI::Prolog::Engine::Builtins
       Non-existent predicates now issue a warning even if trace is off.
       Added new predicates:

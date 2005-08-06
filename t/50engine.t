@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 50engine.t,v 1.9 2005/06/20 07:36:48 ovid Exp $';
+# '$Id: 50engine.t,v 1.10 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 use Test::More tests => 35;
@@ -33,7 +33,7 @@ is_deeply \@keys, \@expected,
     'A brand new database should only have the predicates listed in the query';
 
 my $parser = Parser->new("append(X,Y,[a,b,c,d]).");
-my $query  = Term->new($parser);
+my $query  = $parser->_term;
 
 can_ok $CLASS, 'new';
 ok my $engine = $CLASS->new($query, $database),
@@ -82,15 +82,15 @@ isa_ok $engine, $CLASS, '... and the object it returns';
 is_deeply \@keys, \@expected,
     '... and the basic prolog terms should be bootstrapped';
 can_ok $engine, 'results';
-is $engine->results, 'append([],[a,b,c,d],[a,b,c,d])',
+is $engine->results, 'append([], [a,b,c,d], [a,b,c,d])',
     '... calling it the first time should provide the first unification';
-is $engine->results, 'append([a],[b,c,d],[a,b,c,d])',
+is $engine->results, 'append([a], [b,c,d], [a,b,c,d])',
     '... and then the second unification';
-is $engine->results, 'append([a,b],[c,d],[a,b,c,d])',
+is $engine->results, 'append([a,b], [c,d], [a,b,c,d])',
     '... and then the third unification';
-is $engine->results, 'append([a,b,c],[d],[a,b,c,d])',
+is $engine->results, 'append([a,b,c], [d], [a,b,c,d])',
     '... and then the fifth unification';
-is $engine->results, 'append([a,b,c,d],[],[a,b,c,d])',
+is $engine->results, 'append([a,b,c,d], [], [a,b,c,d])',
     '... and then the last unification unification';
 ok ! defined $engine->results,
     '... and it should return undef when there are no more results';
@@ -100,7 +100,7 @@ my $bootstrapped_db = clone($database);
 $query = Term->new('append(X,[d],[a,b,c,d]).');
 can_ok $engine, 'query';
 $engine->query($query);
-is $engine->results,'append([a,b,c],[d],[a,b,c,d])',
+is $engine->results,'append([a,b,c], [d], [a,b,c,d])',
     '... and it should let us issue a new query against the same db';
 ok ! $engine->results,
     '... and it should not return spurious results';

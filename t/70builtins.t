@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 70builtins.t,v 1.6 2005/02/23 06:42:02 ovid Exp $';
+# '$Id: 70builtins.t,v 1.7 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 use Test::More tests => 35;
@@ -47,18 +47,18 @@ is $prolog->results, 'q(rubies)',
     '... even if called with a variable';
     
 $prolog->query('eq(this,this)');
-is $prolog->results, "eq(this,this)",
+is $prolog->results, "eq(this, this)",
     'eq(X,Y) should succeed if the predicate are equal';
 
 $prolog->query("eq(this,that).");
 ok ! $prolog->results, '... and it should fail if the predicate are not equal';
 $prolog->query("steals(badguy,X).");
-is $prolog->results, 'steals(badguy,rubies)',
+is $prolog->results, 'steals(badguy, rubies)',
     'if(X,Y,Z) should call Y if X is satisfied';
 ok ! $prolog->results, '... and it should only provide correct results';
 
 $prolog->query("steals(ovid,X).");
-is $prolog->results, 'steals(ovid,nothing)',
+is $prolog->results, 'steals(ovid, nothing)',
     '... and it should call Z if X cannot be satisfied';
 ok ! $prolog->results, '... and it should only provide correct results';
 
@@ -84,15 +84,15 @@ ok ! $prolog->results,
     '... but it should not return more results even if they exist';
 
 $prolog->query("or(thief(badguy),thief(ovid)).");
-is $prolog->results, 'or(thief(badguy),thief(ovid))',
+is $prolog->results, 'or(thief(badguy), thief(ovid))',
     'or should succeed if one of its goals can succeed.';
 
 $prolog->query("or(thief(ovid),thief(badguy)).");
-is $prolog->results, 'or(thief(ovid),thief(badguy))',
+is $prolog->results, 'or(thief(ovid), thief(badguy))',
     '... regardless of the order they are in';
 
 $prolog->query("or(thief(thug),thief(badguy)).");
-is $prolog->results, 'or(thief(thug),thief(badguy))',
+is $prolog->results, 'or(thief(thug), thief(badguy))',
     '... and it should succeed if both of its goals can succeed';
 
 $prolog->query("or(thief(kudra),thief(ovid)).");
@@ -116,25 +116,25 @@ is_deeply \@stdout, ["nothing"], '... even if it is printing a variable';
 
 $prolog->do("assert(loves(ovid,perl)).");
 $prolog->query("loves(ovid,X)");
-is $prolog->results, "loves(ovid,perl)", 'assert(X) should let us add new facts to the db';
+is $prolog->results, "loves(ovid, perl)", 'assert(X) should let us add new facts to the db';
 
 $prolog->do("assert(loves(bob,stuff))");
 $prolog->query('loves(bob,Y)');
-is $prolog->results, 'loves(bob,stuff)',
+is $prolog->results, 'loves(bob, stuff)',
     '... and we should be able to add more than one fact';
 $prolog->query("loves(ovid,X)");
-is $prolog->results, "loves(ovid,perl)", '... and it shoud not interfere with previous facts';
+is $prolog->results, "loves(ovid, perl)", '... and it shoud not interfere with previous facts';
 
 $prolog->do("assert(loves(sally, X))");
 $prolog->query('loves(sally,Y)');
-is $prolog->results, 'loves(sally,_0)',
+is $prolog->results, 'loves(sally, A)',
     '... and we should be able to assert a fact with a variable';
 
 $prolog->query('loves(sally, food)');
-is $prolog->results, 'loves(sally,food)',
+is $prolog->results, 'loves(sally, food)',
     '... and it should behave as expected';
 $prolog->query('loves(sally,X)');
-is $prolog->results, 'loves(sally,_0)',
+is $prolog->results, 'loves(sally, A)',
     '... and the asserted fact should remain unchanged.';
 
 $prolog->do("retract(loves(ovid,perl)).");
@@ -147,7 +147,7 @@ append([], X, X) :- !.
 append([W|X],Y,[W|Z]) :- append(X,Y,Z).
 END_PROLOG
 $prolog->query('append(X,Y,[a,b,c,d])');
-is $prolog->results, 'append([],[a,b,c,d],[a,b,c,d])',
+is $prolog->results, 'append([], [a,b,c,d], [a,b,c,d])',
     '... and it should return the correct results';
 ok ! $prolog->results, '... and halt backtracking appropriately';
 
@@ -156,12 +156,12 @@ test_var(VAR,X) :-
   if(var(VAR), eq(X,is_var), eq(X,not_var)).
 END_PROLOG
 $prolog->query('test_var(X, Y)');
-is $prolog->results, 'test_var(_0,is_var)', 'var(X) should evaluate to true';
+is $prolog->results, 'test_var(A, is_var)', 'var(X) should evaluate to true';
 $prolog->query('test_var(42, Y)');
-is $prolog->results, 'test_var(42,not_var)',
+is $prolog->results, 'test_var(42, not_var)',
     '... and var(42) should evaluate to not true';
 $prolog->query('test_var(ovid, Y)');
-is $prolog->results, 'test_var(ovid,not_var)',
+is $prolog->results, 'test_var(ovid, not_var)',
     '... and var(ovid) should evaluate to not true';
 
 {

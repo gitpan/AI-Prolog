@@ -1,6 +1,6 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.17 2005/06/25 23:06:53 ovid Exp $';
-$VERSION  = '0.72';
+$REVISION = '$Id: Prolog.pm,v 1.18 2005/08/06 23:28:40 ovid Exp $';
+$VERSION  = '0.73';
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
@@ -107,11 +107,12 @@ AI::Prolog - Perl extension for logic programming.
  use Data::Dumper;
 
  my $database = <<'END_PROLOG';
- append([], X, X).
- append([W|X],Y,[W|Z]) :- append(X,Y,Z).
+   append([], X, X).
+   append([W|X],Y,[W|Z]) :- append(X,Y,Z).
  END_PROLOG
 
  my $prolog = AI::Prolog->new($database);
+ 
  my $list   = $prolog->list(qw/a b c d/);
  $prolog->query("append(X,Y,[$list]).");
  while (my $result = $prolog->results) {
@@ -220,10 +221,9 @@ Call the C<results> method and inspect the C<results> object:
       print "badguy steals $result->[2]\n";
   }
 
-=head1 GRAMMAR
+=head1 BUILTINS
 
-See L<AI::Prolog::Builtins|AI::Prolog::Builtins> for the grammar and built in
-predicates.
+See L<AI::Prolog::Builtins|AI::Prolog::Builtins> for the built in predicates.
 
 =head1 CLASS METHODS
 

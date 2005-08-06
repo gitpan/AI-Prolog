@@ -1,5 +1,5 @@
 package AI::Prolog::Engine::Primitives;
-$REVISION = '$Id: Primitives.pm,v 1.12 2005/06/25 23:06:53 ovid Exp $';
+$REVISION = '$Id: Primitives.pm,v 1.1 2005/08/06 23:28:40 ovid Exp $';
 $VERSION = '0.2';
 use strict;
 use warnings;
@@ -313,11 +313,11 @@ __END__
 
 =head1 NAME
 
-AI::Prolog::Engine::Builtins - The code for running aiprolog builtins
+AI::Prolog::Engine::Primitives - The code for running aiprolog builtins
 
 =head1 SYNOPSIS
 
- my $builtin = AI::Prolog::Engine::Builtins->find($builtin_id);
+ my $builtin = AI::Prolog::Engine::Primitives ->find($builtin_id);
 
 =head1 DESCRIPTION
 

@@ -1,5 +1,5 @@
 package AI::Prolog::Engine;
-$REVISION = '$Id: Engine.pm,v 1.12 2005/06/25 23:06:53 ovid Exp $';
+$REVISION = '$Id: Engine.pm,v 1.13 2005/08/06 23:28:40 ovid Exp $';
 $VERSION = '0.2';
 use strict;
 use warnings;
@@ -225,9 +225,9 @@ sub _run {
             }
             else {
                 my @results = $self->_call->to_data;
-                return $self->raw_results
-                    ? $results[1]
-                    : $results[0];
+                return $self->raw_results ? $results[1]
+                     :                      $results[0]
+                     ;
             }
         }
         
@@ -250,8 +250,8 @@ sub _run {
             );
         }
         my $vars = [];
-        my $xxx  = $clause->{term}->refresh($vars);
-        if ($xxx->unify($self->{_goal}->term, $self->{_stack})) {
+        my $curr_term  = $clause->{term}->refresh($vars);
+        if ($curr_term->unify( $self->{_goal}->term, $self->{_stack} )) {
             $clause = $clause->{next};
             if ($clause && $clause->isa(Primitive)) {
                 if (! $self->do_primitive($self->{_goal}->{term}, $clause)
@@ -275,6 +275,7 @@ sub _run {
                     else {
                         $p = TermList->new($clause->{term}->refresh($vars));
                     }
+
                     if ($i == 1) {
                         $p1 = $ptail = $p;
                     }
@@ -323,9 +324,7 @@ sub _warn { # convenient testing hook
     warn @_;
 }
 
-use constant CONTINUE => 1;
 use constant RETURN   => 2;
-use constant FAIL     => ();
 
 sub do_primitive { # returns false if fails
     my ($self, $term, $c) = @_;

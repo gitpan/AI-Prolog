@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 80preprocessor_math.t,v 1.2 2005/06/20 07:36:48 ovid Exp $';
+# '$Id: 80preprocessor_math.t,v 1.3 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 use Test::More tests => 140;

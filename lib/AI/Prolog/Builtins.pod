@@ -4,7 +4,7 @@ AI::Prolog::Builtins - Builtin predicates that AI::Prolog supports
 
 =head1 REVISION
 
- $Id: Builtins.pod,v 1.8 2005/06/20 07:36:48 ovid Exp $
+ $Id: Builtins.pod,v 1.9 2005/08/06 23:28:40 ovid Exp $
 
 =head2 Comments
 

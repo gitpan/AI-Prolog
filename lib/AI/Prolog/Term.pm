@@ -1,5 +1,5 @@
 package AI::Prolog::Term;
-$REVISION = '$Id: Term.pm,v 1.9 2005/06/25 23:06:53 ovid Exp $';
+$REVISION = '$Id: Term.pm,v 1.10 2005/08/06 23:28:40 ovid Exp $';
 
 $VERSION = '0.06';
 use strict;
@@ -51,7 +51,7 @@ sub new {
         my $arg = shift;
         return _new_with_id($class, $arg)     if ! CORE::ref $arg && $arg =~ /^[[:digit:]]+$/;
         return _new_from_string($class, $arg) if ! CORE::ref $arg;
-        return $arg->_term($class)            if   CORE::ref $arg && $arg->isa(Parser);
+        #return $arg->_term($class)            if   CORE::ref $arg && $arg->isa(Parser);
     }
     require Carp;
     Carp::croak("Unknown arguments to Term->new");
@@ -276,20 +276,19 @@ sub _dumpit {
 # $stack: the stack is used to store the address of variables which
 # are bound by the unification.  This is needed when backtracking.
 
-my $unify = 1;
 sub unify {
     my ($self, $term, $stack) = @_;
     #_dumpit($self);
     #_dumpit($term);
-    $unify++;
-    return $self->ref->unify($term, $stack) if $self->{bound} and $self->{deref};
-    return $self->unify($term->ref, $stack) if $term->{bound} and $term->{deref}; # XXX
+    
+    foreach ($self, $term) {
+        $_ = $_->{ref} while $_->{bound} and $_->{deref};
+    }
+
     if ($self->{bound} and $term->{bound}) { # bound and not deref
         if ($self->functor eq $term->getfunctor && $self->arity == $term->getarity) {
             for my $i (0 .. $self->arity - 1) {
-                if (! $self->{args}[$i]->unify($term->getarg($i), $stack)) {
-                    return;
-                }
+                return unless $self->{args}[$i]->unify($term->getarg($i), $stack);
             }
             return 1;
         }
@@ -340,15 +339,10 @@ sub refresh {
         }
     }
     # else unbound
-    return $self->_getvar($term_aref, $self->{varid});
-}
-
-sub _getvar {
-    my ($self, $l, $varid) = @_;
-    unless ( $l->[$varid] ) {
-        $l->[$varid] = $self->new;
+    unless ( $term_aref->[$self->{varid}] ) {
+        $term_aref->[$self->{varid}] = $self->new;
     }
-    return $l->[$varid];
+    return $term_aref->[$self->{varid}];
 }
 
 sub to_data {
@@ -410,45 +404,60 @@ sub _to_data {
     return undef;
 }
 
+my %varname_for;
+my $varname = 'A';
 sub to_string {
+    require Data::Dumper;
+    my $self = shift;
+    return $self->_to_string(@_);
+}
+
+sub _to_string {
     my ($self, $extended) = @_;
     if ($self->{bound}) {
         my $functor = $self->functor;
         my $arity   = $self->arity;
         my $prettyprint = $self->prettyprint;
-        return $self->ref->to_string($extended) if $self->{deref};
+        return $self->ref->_to_string($extended) if $self->{deref};
         return "[]" if NULL eq $functor && ! $arity && $prettyprint;
         my $string;
         if ("cons" eq $functor && 2 == $arity && $prettyprint) {
-            $string = "[" . $self->{args}[0]->to_string;
-            my $term   = $self->{args}[1];
+            $string = "[" . $self->{args}[0]->_to_string;
+            my $term = $self->{args}[1];
 
             while ("cons" eq $term->getfunctor && 2 == $term->getarity) {
-                $string .= "," . $term->getarg(0)->to_string;
+                $string .= "," . $term->getarg(0)->_to_string;
                 $term    = $term->getarg(1);
             }
 
             $string .= (NULL eq $term->getfunctor && ! $term->getarity)
                 ? "]"
-                : "|" . $term->to_string . "]";
+                : "|" . $term->_to_string . "]";
             return "$string";
         }
         else {
             $string = $self->functor;
             if ($self->arity) {
                 $string .= "(";
-                my $arity = $self->arity;
-                my @args = @{$self->args};
-                if (@args) {
-                    $string .= $args[$_]->to_string . "," for 0 .. $arity - 2;
-                    $string .= $args[$arity - 1]->to_string
+                if ($self->arity) {
+                    local $Data::Dumper::Terse  = 1; # don't use $var1
+                    local $Data::Dumper::Indent = 0; # no newline
+                    my @args = map { 
+                        my $string = $_->_to_string;
+                        $string =~ /\s/ && ! $_->arity ? Data::Dumper::Dumper($string)
+                        :                     $string;
+                    } @{$self->args};
+                    $string .= join ", " => @args;
                 }
                 $string .=  ")";
             }
         }
         return $string;
     } # else unbound;
-    return "_" . $self->varid;
+    # return "_" . $self->varid;
+    my $var = $self->{varname} || $varname_for{$self->varid} || $varname++;
+    $varname_for{$self->varid} = $var;
+    return $var;
 }
 
 # ----------------------------------------------------------

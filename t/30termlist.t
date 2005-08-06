@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 30termlist.t,v 1.2 2005/02/13 21:01:02 ovid Exp $';
+# '$Id: 30termlist.t,v 1.3 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 #use Test::More 'no_plan';
@@ -21,12 +21,12 @@ use aliased 'AI::Prolog::Term';
 
 can_ok $CLASS, 'new';
 my $parser = Parser->new("p(X,p(X,Y)).");
-ok my $tls = $CLASS->new($parser),
-    '... and creating a new termlist from a parser object should succeed';
+ok my $tls = $parser->_termlist,
+    '... we should be able to create a termlist from the parser';
 isa_ok $tls, $CLASS, '... and the object it creates';
 
 can_ok $tls, 'to_string';
-is $tls->to_string, '[p(_0,p(_0,_1))]',
+is $tls->to_string, "\n\tp(A, p(A, B))",
     '... and its to_string representation should be correct';
 
 can_ok $tls, 'term';
@@ -38,20 +38,20 @@ is $term->arity, 2, '... and the correct arity';
 my $db = Parser->consult('p(this,that).');
 can_ok $tls, 'resolve';
 $tls->resolve($db);
-is $tls->to_string, '[p(_0,p(_0,_1))]',
+is $tls->to_string, "\n\tp(A, p(A, B))",
     '... and its to_string representation should reflect this';
 
 $db = Parser->consult('p(this,that).');
-$tls = $CLASS->new(Parser->new('p(X,p(X,Y)).'));
+$tls = Parser->new('p(X,p(X,Y)).')->_termlist;
 $tls->{definer}[0] = 'anything';
 $tls->resolve($db);
 
-$tls = $CLASS->new(Parser->new(<<'END_PROLOG'));
+$tls = Parser->new(<<'END_PROLOG')->_termlist;
 father(john, sally).
 girl(sally).
 daughter(X) :-
   girl(X),
   father(ANYONE, X).
 END_PROLOG
-is $tls->to_string, '[father(john,sally)]',
+is $tls->to_string, "\n\tfather(john, sally)",
     'Building a complex termlist should succeed';

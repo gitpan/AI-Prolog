@@ -1,5 +1,5 @@
 package AI::Prolog::Parser;
-$REVISION = '$Id: Parser.pm,v 1.8 2005/06/25 23:06:53 ovid Exp $';
+$REVISION = '$Id: Parser.pm,v 1.9 2005/08/06 23:28:40 ovid Exp $';
 
 $VERSION = '0.10';
 use strict;
@@ -255,10 +255,10 @@ sub consult {
     $self->skipspace;
 
     until ($self->empty) {
-        my $tls   = TermList->new($self);
+        my $termlist  = $self->_termlist;
 
-        my $head = $tls->term;
-        my $body = $tls->next;
+        my $head = $termlist->term;
+        my $body = $termlist->next;
 
         my $is_primitive = $body && $body->isa(Primitive);
         unless ($is_primitive) {
@@ -278,15 +278,15 @@ sub consult {
 
 sub resolve {
     my ($class, $db) = @_;
-    foreach my $tls (values %{$db->ht}) {
-        $tls->resolve($db);
+    foreach my $termlist (values %{$db->ht}) {
+        $termlist->resolve($db);
     }
 }
 
 sub _termlist {
-    my ($self, $termlist_class) = @_;
-    my $termlist = $termlist_class->new;
-    my @ts   = Term->new($self);
+    my ($self) = @_;
+    my $termlist = TermList->new;
+    my @ts   = $self->_term;
     $self->skipspace;
 
     if ($self->current eq ':') {
@@ -308,13 +308,13 @@ sub _termlist {
             $self->advance;
             $self->skipspace;
 
-            push @ts => Term->new($self);
+            push @ts => $self->_term;
             $self->skipspace;
 
             while ($self->current eq ',') {
                 $self->advance;
                 $self->skipspace;
-                push @ts => Term->new($self);
+                push @ts => $self->_term;
                 $self->skipspace;
             }
 
@@ -343,8 +343,8 @@ sub _termlist {
 # in standard notation.
 # Example: my $term = Term->new(Parser->new("p(1,a(X,b))"));
 sub _term {
-    my ($self, $term_class) = @_;
-    my $term = $term_class->new(undef, 0);
+    my ($self) = @_;
+    my $term = Term->new(undef, 0);
     my $ts   = [];
     my $i    = 0;
 
@@ -358,13 +358,13 @@ sub _term {
         if ('(' eq $self->current) {
             $self->advance;
             $self->skipspace;
-            $ts->[$i++] = $term->new($self);
+            $ts->[$i++] = $self->_term;
             $self->skipspace;
 
             while (',' eq $self->current) {
                 $self->advance;
                 $self->skipspace;
-                $ts->[$i++] = $term->new($self);
+                $ts->[$i++] = $self->_term;
                 $self->skipspace;
             }
 
@@ -413,20 +413,20 @@ sub _term {
         }
         else {
             $self->skipspace;
-            $ts->[$i++] = $term->new($self);
+            $ts->[$i++] = $self->_term;
             $self->skipspace;
 
             while (',' eq $self->current) {
                 $self->advance;
                 $self->skipspace;
-                $ts->[$i++] = $term->new($self);
+                $ts->[$i++] = $self->_term;
                 $self->skipspace;
             }
 
             if ('|' eq $self->current) {
                 $self->advance;
                 $self->skipspace;
-                $ts->[$i++] = $term->new($self);
+                $ts->[$i++] = $self->_term;
                 $self->skipspace;
             }
             else {
@@ -443,7 +443,7 @@ sub _term {
             $term->{functor} = "cons";
             $term->{arity}   = 2;
             $term->{args}    = [];
-            for (my $j = $i - 2; $j > 0; $j--) {
+            for my $j (reverse 1 .. $i - 2) {
                 my $term = $term->new("cons", 2);
                 $term->setarg(0, $ts->[$j]);
                 $term->setarg(1, $ts->[$j+1]);

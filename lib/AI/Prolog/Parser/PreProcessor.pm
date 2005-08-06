@@ -1,5 +1,5 @@
 package AI::Prolog::Parser::PreProcessor;
-$REVISION = '$Id: PreProcessor.pm,v 1.1 2005/06/20 02:03:02 ovid Exp $';
+$REVISION = '$Id: PreProcessor.pm,v 1.2 2005/08/06 23:28:40 ovid Exp $';
 
 $VERSION = '0.01';
 use strict;

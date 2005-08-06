@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 35step.t,v 1.1 2005/02/20 18:27:55 ovid Exp $';
+# '$Id: 35step.t,v 1.2 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 #use Test::More 'no_plan';
@@ -22,16 +22,15 @@ use aliased 'AI::Prolog::TermList';
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::TermList::Primitive';
 
-my $parser = Parser->new("p(X,p(X,Y)).");
-my $tls    = TermList->new($parser);
-#$tls->next(Primitive->new(7)); # doesn't have to be a primitive.  Just for testing
+my $termlist = Parser->new("p(X,p(X,Y)).")->_termlist;
+#$termlist->next(Primitive->new(7)); # doesn't have to be a primitive.  Just for testing
 can_ok $CLASS, 'new';
-ok my $step = $CLASS->new($tls),
+ok my $step = $CLASS->new($termlist),
     '... and creating a new step from a parser object should succeed';
 isa_ok $step, $CLASS, '... and the object it creates';
 
 can_ok $step, 'to_string';
-is $step->to_string, '[STEP]',
+is $step->to_string, "\n\tSTEP",
     '... and its to_string representation should be correct';
 
 can_ok $step, 'term';
@@ -46,4 +45,4 @@ diag "Flesh out the Step tests when we start using this more";
 __END__
 ok my $termlist = $step->next, '... and calling it should succeed';
 isa_ok $termlist, TermList, '... and the object it returns';
-is_deeply $termlist, $tls, '... and it should be the termlist we instantiated the Step with';
+is_deeply $termlist, $termlist, '... and it should be the termlist we instantiated the Step with';

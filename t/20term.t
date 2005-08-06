@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# '$Id: 20term.t,v 1.5 2005/06/25 23:06:53 ovid Exp $';
+# '$Id: 20term.t,v 1.6 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
 use Test::More tests => 92;
@@ -60,8 +60,8 @@ can_ok $term, 'ref';
 ok ! defined $term->ref, '... which means it should not reference anything';
 
 can_ok $term, 'to_string';
-is $term->to_string, '_1',
-    '... and a simple unbound term will just have an _$varnum as its string representation';
+is $term->to_string, 'A',
+    '... and a simple unbound term will just have a new variable as its string representation';
 
 # new with id
 
@@ -73,8 +73,8 @@ ok ! $term->bound, '... nor should it be bound to another term';
 is $term->varid, 7, '... and it should have the id we specify';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
-is $term->to_string, '_7',
-    '... and a simple unbound term will just have an _$varnum as its string representation';
+is $term->to_string, 'B',
+    '... and a simple unbound term will just have a new variable as its string representation';
 
 # new with functor and arity
 
@@ -93,8 +93,8 @@ is $term->to_string, 'steals()',
 can_ok $term, 'predicate';
 is $term->predicate, 'steals/2', '... and it should return the correct predicate';
 
-my $parsed = Parser->new('stuph(VAR)');
-ok $term = $CLASS->new($parsed),
+my $parser = Parser->new('stuph(VAR)');
+ok $term = $parser->_term,
     'We should be able to create a new term from a parser object';
 is $term->functor, 'stuph', '... and the functor should match the parser functor';
 is $term->arity, 1, '... and the arity should match the parser arity';
@@ -103,12 +103,12 @@ is $term->bound, 1, '... but it should be bound to a value!';
 is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
-is $term->to_string, 'stuph(_0)',
+is $term->to_string, 'stuph(C)',
     '... bound term with one arg should show the functor and the arg';
 is $term->predicate, 'stuph/1', '... and it should return the correct predicate';
 
-$parsed = Parser->new('stuph(notvar, varnot)');
-ok $term = $CLASS->new($parsed),
+$parser = Parser->new('stuph(notvar, varnot)');
+ok $term = $parser->_term,
     'We should be able to create a new term from a parser object';
 is $term->functor, 'stuph', '... and the functor should match the parser functor';
 is $term->arity, 2, '... and the arity should match the parser arity';
@@ -117,12 +117,12 @@ is $term->bound, 1, '... but it should be bound to a value!';
 is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
-is $term->to_string, 'stuph(notvar,varnot)',
+is $term->to_string, 'stuph(notvar, varnot)',
     '... bound term with two args should show the functor and the args';
 is $term->predicate, 'stuph/2', '... and it should return the correct predicate';
 
-$parsed = Parser->new('stuph("not var")');
-ok $term = $CLASS->new($parsed),
+$parser = Parser->new('stuph("not var")');
+ok $term = $parser->_term,
     'We should be able to create a new term from a parser object and handle quotes';
 is $term->functor, 'stuph', '... and the functor should match the parser functor';
 is $term->arity, 1, '... and the arity should match the parser arity';
@@ -131,12 +131,12 @@ is $term->bound, 1, '... but it should be bound to a value!';
 is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
-is $term->to_string, 'stuph(not var)',
+is $term->to_string, "stuph('not var')",
     '... bound term with one arg should show the functor and the arg';
 is $term->predicate, 'stuph/1', '... and it should return the correct predicate';
 
-$parsed = Parser->new(q{stuph('some string o stuff', "not var")});
-ok $term = $CLASS->new($parsed),
+$parser = Parser->new(q{stuph('some string o stuff', "not var")});
+ok $term = $parser->_term,
     'We should be able to create a new term from a parser object and handle quotes';
 is $term->functor, 'stuph', '... and the functor should match the parser functor';
 is $term->arity, 2, '... and the arity should match the parser arity';
@@ -145,13 +145,13 @@ is $term->bound, 1, '... but it should be bound to a value!';
 is $term->varid, 0, '... and it should have a false varid';
 is_deeply $term->deref, $term, '... and since it is not bound, it returns $self';
 ok ! defined $term->ref, '... which means it should not reference anything';
-is $term->to_string, 'stuph(some string o stuff,not var)',
+is $term->to_string, "stuph('some string o stuff', 'not var')",
     '... bound term with two args should show the functor and the args';
 can_ok $term, 'refresh';
 is $term->predicate, 'stuph/2', '... and it should return the correct predicate';
 
-$parsed = Parser->new(q{stuph(_)});
-ok $term = $CLASS->new($parsed),
+$parser = Parser->new(q{stuph(_)});
+ok $term = $parser->_term,
     'We should be able to create a new term from a parser object and handle quotes';
 is $term->functor, 'stuph', '... and the functor should match the parser functor';
 is $term->arity, 1, '... and the arity should match the parser arity';

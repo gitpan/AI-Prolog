@@ -9,7 +9,7 @@ use Term::ReadKey;
 use Pod::Usage 1.12;
 use aliased 'AI::Prolog';
 AI::Prolog::Engine->formatted(1);
-# '$Id: aiprolog,v 1.6 2005/06/20 07:36:48 ovid Exp $';
+# '$Id: aiprolog,v 1.7 2005/08/06 23:28:40 ovid Exp $';
 
 my $term = Term::ReadLine->new('AI::Prolog');
 my $OUT  = $term->OUT || \*STDOUT;

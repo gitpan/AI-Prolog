@@ -1,12 +1,14 @@
 package AI::Prolog::TermList::Clause;
-$REVISION = '$Id: Clause.pm,v 1.3 2005/06/20 07:36:48 ovid Exp $';
-$VERSION = '0.1';
-@ISA = 'AI::Prolog::TermList';
+
+$REVISION = '$Id: Clause.pm,v 1.4 2005/08/06 23:28:40 ovid Exp $';
+$VERSION  = '0.1';
+@ISA      = 'AI::Prolog::TermList';
+
 use strict;
 use warnings;
 
 sub new {
-        #      Term  TermList
+    #      Term  TermList
     my $class = shift;
     return $class->SUPER::new(@_);
 }

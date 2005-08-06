@@ -1,5 +1,5 @@
 package AI::Prolog::TermList;
-$REVISION = '$Id: TermList.pm,v 1.10 2005/06/25 23:06:53 ovid Exp $';
+$REVISION = '$Id: TermList.pm,v 1.11 2005/08/06 23:28:40 ovid Exp $';
 
 $VERSION = 0.03;
 
@@ -17,7 +17,6 @@ sub new {
     my $proto = shift;
     my $class = ref $proto || $proto; # yes, I know what I'm doing
     return _new_from_term($class, @_)          if 1 == @_ && $_[0]->isa(Term);
-    return shift->_termlist($class)            if 1 == @_ && $_[0]->isa(Parser); # aargh! Lack of MMD sucks
     return _new_from_term_and_next($class, @_) if 2 == @_;
     if (@_) {
         require Carp;
@@ -74,13 +73,15 @@ sub next_clause {
 
 sub to_string {
     my $self = shift;
-    my $to_string = "[" . $self->term->to_string;
+    my $indent = "\n\t";
+    my $to_string = $indent . $self->term->to_string;
+    #my $to_string = "[" . $self->term->to_string;
     my $tl = $self->next;
     while ($tl) {
-        $to_string .= ", " . $tl->term->to_string;
+        $to_string .= ",$indent" . $tl->term->to_string;
         $tl = $tl->next;
     }
-    return "$to_string]";
+    return $to_string;
 }
 
 sub resolve { # a.k.a. lookup_in
