@@ -1,7 +1,7 @@
 bin/aiprolog
 Changes
-data/spider.pro
 data/sleepy.pro
+data/spider.pro
 examples/append.pl
 examples/benchmark.pl
 examples/cut.pl
@@ -16,6 +16,7 @@ examples/trace.pl
 lib/AI/Prolog.pm
 lib/AI/Prolog/Builtins.pod
 lib/AI/Prolog/ChoicePoint.pm
+lib/AI/Prolog/Cookbook.pod
 lib/AI/Prolog/Engine.pm
 lib/AI/Prolog/Engine/Primitives.pm
 lib/AI/Prolog/Introduction.pod
@@ -27,6 +28,7 @@ lib/AI/Prolog/Term.pm
 lib/AI/Prolog/Term/Cut.pm
 lib/AI/Prolog/Term/Number.pm
 lib/AI/Prolog/TermList.pm
+lib/AI/Prolog/TermList/.Clause.pm.swp
 lib/AI/Prolog/TermList/Clause.pm
 lib/AI/Prolog/TermList/Primitive.pm
 lib/AI/Prolog/TermList/Step.pm

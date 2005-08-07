@@ -1,6 +1,6 @@
 Revision history for Perl extension AI::Prolog.
 
-0.73  
+0.73  Sat August 6, 2005
       Added AI::Prolog::Cookbook as an introduction to common problems
         encountered when working with Prolog.
       TermList->to_string now causes listings to look very similar to
