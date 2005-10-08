@@ -1,5 +1,10 @@
 Revision history for Perl extension AI::Prolog.
 
+0.734 2005-10-08
+      Added POD tests (sort of)
+      Added strict to AI::Prolog
+      Converted to Module::Build
+
 0.732 Sat August 6, 2005
       Added lib/AI/Prolog/Cookbook.pm to the MANIFEST (whoops)
 

@@ -1,3 +1,4 @@
+Build.PL
 bin/aiprolog
 Changes
 data/sleepy.pro
@@ -28,7 +29,6 @@ lib/AI/Prolog/Term.pm
 lib/AI/Prolog/Term/Cut.pm
 lib/AI/Prolog/Term/Number.pm
 lib/AI/Prolog/TermList.pm
-lib/AI/Prolog/TermList/.Clause.pm.swp
 lib/AI/Prolog/TermList/Clause.pm
 lib/AI/Prolog/TermList/Primitive.pm
 lib/AI/Prolog/TermList/Step.pm

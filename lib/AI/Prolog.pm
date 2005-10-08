@@ -1,6 +1,7 @@
 package AI::Prolog;
 $REVISION = '$Id: Prolog.pm,v 1.18 2005/08/06 23:28:40 ovid Exp $';
-$VERSION  = '0.732';
+$VERSION  = '0.733';
+use strict;
 
 use Exporter::Tidy
     shortcuts => [qw/Parser Term Engine/];
