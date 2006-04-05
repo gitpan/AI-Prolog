@@ -1,69 +1,8 @@
 --- #YAML:1.0
 name: AI-Prolog
-version: 0.733
+version: 0.734
 author:
-  - Curtis "Ovid" Poe <ovid@cpan.org>
-abstract: Perl extension for logic programming.
+  - 'Curtis "Ovid" Poe <ovid@cpan.org>'
+abstract: "Perl extension for logic programming."
 license: perl
-requires:
-  Clone: 0.15
-  Exporter::Tidy: 0.06
-  Hash::AsObject: 0.05
-  Pod::Usage: 1.12
-  Regexp::Common: 2.119
-  Term::ReadKey: 2.21
-  Term::ReadLine: 1.01
-  Test::Differences: 0.47
-  Test::Exception: 0.2
-  Test::MockModule: 0.04
-  Test::Warn: 0.08
-  Text::Balanced: 1.95
-  Text::Quote: 0.03
-  aliased: 0.11
-provides:
-  AI::Prolog:
-    file: lib/AI/Prolog.pm
-    version: 0.733
-  AI::Prolog::ChoicePoint:
-    file: lib/AI/Prolog/ChoicePoint.pm
-    version: 0.02
-  AI::Prolog::Engine:
-    file: lib/AI/Prolog/Engine.pm
-    version: 0.2
-  AI::Prolog::Engine::Primitives:
-    file: lib/AI/Prolog/Engine/Primitives.pm
-    version: 0.2
-  AI::Prolog::KnowledgeBase:
-    file: lib/AI/Prolog/KnowledgeBase.pm
-    version: 0.02
-  AI::Prolog::Parser:
-    file: lib/AI/Prolog/Parser.pm
-    version: 0.10
-  AI::Prolog::Parser::PreProcessor:
-    file: lib/AI/Prolog/Parser/PreProcessor.pm
-    version: 0.01
-  AI::Prolog::Parser::PreProcessor::Math:
-    file: lib/AI/Prolog/Parser/PreProcessor/Math.pm
-    version: 0.01
-  AI::Prolog::Term:
-    file: lib/AI/Prolog/Term.pm
-    version: 0.06
-  AI::Prolog::Term::Cut:
-    file: lib/AI/Prolog/Term/Cut.pm
-    version: 0.1
-  AI::Prolog::Term::Number:
-    file: lib/AI/Prolog/Term/Number.pm
-    version: 0.1
-  AI::Prolog::TermList:
-    file: lib/AI/Prolog/TermList.pm
-    version: 0.03
-  AI::Prolog::TermList::Clause:
-    file: lib/AI/Prolog/TermList/Clause.pm
-    version: 0.1
-  AI::Prolog::TermList::Primitive:
-    file: lib/AI/Prolog/TermList/Primitive.pm
-    version: 0.1
-  AI::Prolog::TermList::Step:
-    file: lib/AI/Prolog/TermList/Step.pm
-    version: 0.1
-generated_by: Module::Build version 0.2701
+generated_by: Module::Build version 0.2704, without YAML.pm

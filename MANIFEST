@@ -15,6 +15,7 @@ examples/path.pl
 examples/schedule.pl
 examples/trace.pl
 lib/AI/Prolog.pm
+lib/AI/Prolog/Article.pod
 lib/AI/Prolog/Builtins.pod
 lib/AI/Prolog/ChoicePoint.pm
 lib/AI/Prolog/Cookbook.pod

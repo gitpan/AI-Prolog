@@ -28,11 +28,12 @@ my $version = Prolog->VERSION;
 print $OUT <<"END_WELCOME";
 
 Welcome to AI::Prolog v $version
-Copyright (c) 2005, Curtis "Ovid" Poe.
+Copyright (c) 2005-2006, Curtis "Ovid" Poe.
 AI::Prolog comes with ABSOLUTELY NO WARRANTY.  This library is free software;
 you can redistribute it and/or modify it under the same terms as Perl itself.
 
-Type '?' for help.
+Type 'help.' for for a list of built-ins or 'help("\$builtin").' for help on a
+specific built-in.
 
 END_WELCOME
 

@@ -1,6 +1,6 @@
 package AI::Prolog;
 $REVISION = '$Id: Prolog.pm,v 1.18 2005/08/06 23:28:40 ovid Exp $';
-$VERSION  = '0.733';
+$VERSION  = '0.734';
 use strict;
 
 use Exporter::Tidy
@@ -136,16 +136,25 @@ find it for us.
 
 For those who like to just dive right in, this distribution contains a Prolog
 shell called C<aiprolog> and two short adventure games, C<spider.pro> and
-C<sleepy.pro>.
+C<sleepy.pro>.  If you have installed the C<aiprolog> shell, you can run
+either game with the command:
+
+ aiprolog data/spider.pro
+ aiprolog data/sleepy.pro
+
+When the C<aiprolog> shell starts, you can type C<start.> to see how to play
+the game.  Typing C<halt.> and hitting return twice will allow you to exit.
 
 See the C<bin/> and C<data/> directories in the distribution.
 
-=head1 ALPHA CODE
+Additionally, you can read L<AI::Prolog::Article> for a better description of
+how to use C<AI::Prolog>.  This document is an article originally published in
+The Perl Review (L<http://www.theperlreview.com/>) and which they have
+graciously allowed me to redistribute.
 
-This is alpha code.  This will likely be alpha code for a while until a new
-parser is in place and we can stabilize the interface.  B<Do not depend on the
-interface remaining stable>!  If you need it stable, drop me a line and I'll
-see what I can do.
+See also Robert Pratte's perl.com article, "Logic Programming with Perl and
+Prolog" (L<http://www.perl.com/pub/a/2005/12/15/perl_prolog.html>) for more
+more examples.
 
 =head1 DESCRIPTION
 

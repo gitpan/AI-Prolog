@@ -1,3 +1,4 @@
+use ExtUtils::MakeMaker 6.30;
 use ExtUtils::MakeMaker qw/WriteMakefile prompt/;
 
 my (@program, @extra_modules);

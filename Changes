@@ -1,6 +1,13 @@
 Revision history for Perl extension AI::Prolog.
 
-0.734 2005-10-08
+0.734 2006-04-05
+      Added minimum requirement of ExtUtils::MakeMaker 6.30 due to bug report
+      filed on RT.  Thanks to zby for the catch.
+      Added a copy of the Perl Review article on logic programming.  Thanks to
+      brian d for and the Perl Review for allowing me to republish this
+      article.
+
+0.733 2005-10-08
       Added POD tests (sort of)
       Added strict to AI::Prolog
       Converted to Module::Build
