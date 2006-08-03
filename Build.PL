@@ -17,12 +17,13 @@ my %requires = (
     'Test::Warn'        => 0.08,
     'Text::Balanced'    => 1.95,
     'Text::Quote'       => 0.03,
+    'Scalar::Util'      => 0,
 );
 
 my $build = Module::Build->new(
     module_name       => 'AI::Prolog',
     license           => 'perl',
-    dist_author       => 'Curtis "Ovid" Poe <ovid@cpan.org>',
+    dist_author       => 'Joshua ben Jore <jjore@cpan.org>',
     dist_version_from => 'lib/AI/Prolog.pm',
     requires          => \%requires,
     add_to_cleanup    => ['AI-Prolog-*'],

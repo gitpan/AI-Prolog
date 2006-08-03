@@ -2,12 +2,13 @@ package AI::Prolog::TermList::Clause;
 
 $REVISION = '$Id: Clause.pm,v 1.4 2005/08/06 23:28:40 ovid Exp $';
 $VERSION  = '0.1';
-@ISA      = 'AI::Prolog::TermList';
 
 use strict;
 use warnings;
+use base 'AI::Prolog::TermList';
 
 sub new {
+
     #      Term  TermList
     my $class = shift;
     return $class->SUPER::new(@_);
@@ -15,9 +16,9 @@ sub new {
 
 sub to_string {
     my $self = shift;
-    my ($term,$next) = ($self->term,$self->next);
-    foreach ($term, $next) {
-        $_ = $_? $_->to_string : "null";
+    my ( $term, $next ) = ( $self->term, $self->next );
+    foreach ( $term, $next ) {
+        $_ = $_ ? $_->to_string : "null";
     }
     return sprintf "%s :- %s" => $term, $next;
 }

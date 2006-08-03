@@ -43,7 +43,7 @@ is $tls->to_string, "\n\tp(A, p(A, B))",
 
 $db = Parser->consult('p(this,that).');
 $tls = Parser->new('p(X,p(X,Y)).')->_termlist;
-$tls->{definer}[0] = 'anything';
+#$tls->{definer}[0] = 'anything';
 $tls->resolve($db);
 
 $tls = Parser->new(<<'END_PROLOG')->_termlist;

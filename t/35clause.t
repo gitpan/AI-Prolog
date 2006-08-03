@@ -43,7 +43,7 @@ is $clause->to_string, 'p(A, p(A, B)) :- null',
 
 $db = Parser->consult('p(this,that).');
 $termlist = Parser->new('p(X,p(X,Y)).')->_termlist;
-$termlist->{definer}[0] = 'anything';
+#$termlist->{definer}[0] = 'anything';
 $termlist->resolve($db);
 
 $termlist = Parser->new(<<"END_PROLOG")->_termlist;

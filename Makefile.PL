@@ -34,6 +34,7 @@ WriteMakefile(
         'Test::Warn'        => 0.08,
         'Text::Balanced'    => 1.95,
         'Text::Quote'       => 0.03,
+        'Scalar::Util'      => 0,
         @extra_modules
     },
     ($] >= 5.005

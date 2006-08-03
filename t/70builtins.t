@@ -2,7 +2,7 @@
 # '$Id: 70builtins.t,v 1.7 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 35;
+use Test::More tests => 39;
 #use Test::More qw/no_plan/;
 use Test::MockModule;
 use Clone qw/clone/;
@@ -141,6 +141,28 @@ $prolog->do("retract(loves(ovid,perl)).");
 $prolog->query("loves(ovid,X)");
 ok ! $prolog->results,
     "retract(X) should remove a fact from the database";
+
+my @test_me;
+sub test_me {
+    my ( $first, $second, $third, $fourth ) = @_;
+    @test_me = ( "\L$first", "\U$second", "\u$third", $fourth );
+    return;
+}
+$prolog->query(q{perlcall2( "test_me", ["FIND ME","and me","also me", 42] ).});
+ok $prolog->results, 'Called a perl function ok';
+is_deeply \@test_me, ["find me","AND ME", "Also me", 42],
+    'Perl function got results ok';
+
+@test_me = ();
+$prolog->query(q{perlcall2( X, ["Uh..."] ).});
+ok ! $prolog->results, "Didn't call an unknown perl function";
+
+TODO: {
+    local $TODO = "Can't prohibit unbound values in perlcall/2";
+    @test_me = ();
+    $prolog->query(q{perlcall2( "test_me", ["Uh...", X] ).});
+    ok ! $prolog->results, "Didn't call a perl function w/ unknown variables";
+}
 
 ok $prolog = Prolog->new(<<'END_PROLOG'), 'We should be able to parse a cut (!) operator';
 append([], X, X) :- !.

@@ -3,14 +3,15 @@
 use warnings;
 use strict;
 use Test::More tests => 35;
+
 #use Test::More 'no_plan';
 use Test::MockModule;
 use Test::Differences;
 use Clone qw/clone/;
 
 my $CLASS;
-BEGIN
-{
+
+BEGIN {
     chdir 't' if -d 't';
     unshift @INC => '../lib';
     $CLASS = 'AI::Prolog::Engine';
@@ -66,6 +67,7 @@ isa_ok $engine, $CLASS, '... and the object it returns';
     notrace/0
     once/1
     or/2
+    perlcall2/2
     print/1
     println/1
     retract/1
@@ -102,8 +104,7 @@ can_ok $engine, 'query';
 $engine->query($query);
 is $engine->results,'append([a,b,c], [d], [a,b,c,d])',
     '... and it should let us issue a new query against the same db';
-ok ! $engine->results,
-    '... and it should not return spurious results';
+ok !$engine->results, '... and it should not return spurious results';
 
 # this will eventually test data structures
 

@@ -1,10 +1,11 @@
 package AI::Prolog::Engine;
 $REVISION = '$Id: Engine.pm,v 1.13 2005/08/06 23:28:40 ovid Exp $';
-$VERSION = '0.2';
+$VERSION  = '0.3';
 use strict;
 use warnings;
 
 use Scalar::Util qw/looks_like_number/;
+use Hash::Util 'lock_keys';
 
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::Term::Cut';
@@ -47,6 +48,7 @@ sub halt {
 }
 
 my $FORMATTED = 1;
+
 sub formatted {
     my $self = shift;
     if (@_) {
@@ -57,6 +59,7 @@ sub formatted {
 }
 
 my $RAW_RESULTS;
+
 sub raw_results {
     my $self = shift;
     if (@_) {
@@ -70,6 +73,7 @@ sub raw_results {
 }
 
 my $BUILTIN = 0;
+
 sub _adding_builtins {
     my $self = shift;
     if (@_) {
@@ -80,27 +84,31 @@ sub _adding_builtins {
 }
 
 sub new {
-    my ($class, $term, $prog) = @_;
+    my ( $class, $term, $prog ) = @_;
     my $self = bless {
+
         # The stack holds choicepoints and a list of variables
         # which need to be un-bound upon backtracking.
-	    _stack          => [],
-        _db             => KnowledgeBase->new, 
-        _goal           => TermList->new($term,undef), # TermList
-	    _call           => $term, # Term
+        _stack          => [],
+        _db             => KnowledgeBase->new,
+        _goal           => TermList->new( $term, undef ),    # TermList
+        _call           => $term,                            # Term
         _run_called     => undef,
         _cp             => undef,
         _retract_clause => undef,
-        _trace          => 0, # whether or not tracing is done
-        _halt           => 0, # will stop the aiprolog shell
+        _trace       => 0,       # whether or not tracing is done
+        _halt        => 0,       # will stop the aiprolog shell
+        _perlpackage => undef,
+        _step_flag   => undef,
     } => $class;
+    lock_keys %$self;
 
     # to add a new primitive, use the binding operator (:=) to assign a unique
     # index to the primitive and add the corresponding definition to
     # @PRIMITIVES.
     eval {
         $self->_adding_builtins(1);
-        $self->{_db} = Parser->consult(<<'        END_PROG', $prog);
+        $self->{_db} = Parser->consult( <<'        END_PROG', $prog );
             ne(X, Y) :- not(eq(X,Y)).
             if(X,Y,Z) :- once(wprologtest(X,R)) , wprologcase(R,Y,Z).
             wprologtest(X,yes) :- call(X). wprologtest(X,no). 
@@ -140,6 +148,7 @@ sub new {
             help       := 31.
             help(X)    := 32.
             gensym(X)  := 33.
+            perlcall2(X,Y) := 34.
             eq(X,X).
             not(X) :- X, !, fail.
             not(X).
@@ -158,30 +167,31 @@ sub new {
         Carp::croak("Engine->new failed.  Cannot parse default program: $@");
     }
     $self->{_retract_clause} = $self->{_db}->get("retract/1");
-    $self->{_goal}->resolve($self->{_db});
+    $self->{_goal}->resolve( $self->{_db} );
     return $self;
 }
 
 sub query {
-    my ($self, $query)   = @_;
+    my ( $self, $query ) = @_;
     $self->{_stack}      = [];
     $self->{_run_called} = undef;
     $self->{_goal}       = TermList->new($query);
     $self->{_call}       = $query;
-    $self->{_goal}->resolve($self->{_db});
+    $self->{_goal}->resolve( $self->{_db} );
     return $self;
 }
 
-sub _stack    { shift->{_stack} }
-sub _db       { shift->{_db}    }
-sub _goal     { shift->{_goal}  }
-sub _call     { shift->{_call}  }
+sub _stack { shift->{_stack} }
+sub _db    { shift->{_db} }
+sub _goal  { shift->{_goal} }
+sub _call  { shift->{_call} }
 
 sub dump_goal {
     my ($self) = @_;
-    if ($self->{_goal}) {
-        _print("\n= Goals: "  .$self->{_goal}->to_string);
-        _print("\n==> Try:  " .$self->{_goal}->next_clause->to_string."\n")
+    if ( $self->{_goal} ) {
+        _print( "\n= Goals: " . $self->{_goal}->to_string );
+        _print(
+            "\n==> Try:  " . $self->{_goal}->next_clause->to_string . "\n" )
             if $self->{_goal}->next_clause;
     }
     else {
@@ -191,7 +201,7 @@ sub dump_goal {
 
 sub results {
     my $self = shift;
-    if ($self->{_run_called}) {
+    if ( $self->{_run_called} ) {
         return unless $self->backtrack;
     }
     else {
@@ -201,96 +211,97 @@ sub results {
 }
 
 sub _run {
-    my ($self)   = @_;
+    my ($self) = @_;
     my $stackTop = 0;
 
     while (1) {
-        $stackTop = @{$self->{_stack}};
+        $stackTop = @{ $self->{_stack} };
 
-        if ($self->{_goal} && $self->{_goal}->isa(Step)) {
+        if ( $self->{_goal} && $self->{_goal}->isa(Step) ) {
             $self->{_goal} = $self->{_goal}->next;
-            if ($self->{_goal}) {
-                $self->{_goal}->resolve($self->{_db});
+            if ( $self->{_goal} ) {
+                $self->{_goal}->resolve( $self->{_db} );
             }
             $self->{_step_flag} = 1;
             $self->trace(1);
         }
         $self->dump_goal if $self->{_trace};
         $self->step      if $self->{_step_flag};
-            
-        unless ($self->{_goal}) {
+
+        unless ( $self->{_goal} ) {
+
             # we've succeeded.  return results
-            if ($self->formatted) {
+            if ( $self->formatted ) {
                 return $self->_call->to_string;
             }
             else {
                 my @results = $self->_call->to_data;
-                return $self->raw_results ? $results[1]
-                     :                      $results[0]
-                     ;
+                return $self->raw_results
+                    ? $results[1]
+                    : $results[0];
             }
         }
-        
-        unless ($self->{_goal} && $self->{_goal}{term}) {
+
+        unless ( $self->{_goal} && $self->{_goal}{term} ) {
             require Carp;
             Carp::croak("Engine->run fatal error.  goal->term is null!");
         }
-        unless ($self->{_goal}->{next_clause}) {
-            my $predicate  = $self->{_goal}{term}->predicate;
+        unless ( $self->{_goal}->{next_clause} ) {
+            my $predicate = $self->{_goal}{term}->predicate;
             _warn("WARNING:  undefined predicate ($predicate)\n");
-            next if $self->backtrack; # if we backtracked, try again
-            return;                   # otherwise, we failed
+            next if $self->backtrack;    # if we backtracked, try again
+            return;                      # otherwise, we failed
         }
 
         my $clause = $self->{_goal}->{next_clause};
-        if (my $next_clause = $clause->{next_clause}) {
-            push @{$self->{_stack}} => $self->{_cp} = ChoicePoint->new(
-                $self->{_goal},
-                $next_clause,
-            );
+        if ( my $next_clause = $clause->{next_clause} ) {
+            push @{ $self->{_stack} } => $self->{_cp}
+                = ChoicePoint->new( $self->{_goal}, $next_clause, );
         }
-        my $vars = [];
-        my $curr_term  = $clause->{term}->refresh($vars);
-        if ($curr_term->unify( $self->{_goal}->term, $self->{_stack} )) {
+        my $vars      = [];
+        my $curr_term = $clause->{term}->refresh($vars);
+        if ( $curr_term->unify( $self->{_goal}->term, $self->{_stack} ) ) {
             $clause = $clause->{next};
-            if ($clause && $clause->isa(Primitive)) {
-                if (! $self->do_primitive($self->{_goal}->{term}, $clause)
-                    && ! $self->backtrack) {
+            if ( $clause && $clause->isa(Primitive) ) {
+                if (   !$self->do_primitive( $self->{_goal}->{term}, $clause )
+                    && !$self->backtrack )
+                {
                     return;
                 }
             }
-            elsif (! $clause) { # matching against fact
+            elsif ( !$clause ) {    # matching against fact
                 $self->{_goal} = $self->{_goal}->{next};
-                if ($self->{_goal}) {
-                    $self->{_goal}->resolve($self->{_db});
+                if ( $self->{_goal} ) {
+                    $self->{_goal}->resolve( $self->{_db} );
                 }
             }
-            else { # replace goal by clause body
-                my ($p, $p1, $ptail); # termlists
-                for (my $i = 1; $clause; $i++) {
+            else {                  # replace goal by clause body
+                my ( $p, $p1, $ptail );    # termlists
+                for ( my $i = 1; $clause; $i++ ) {
+
                     # will there only be one CUT?
-                    if ($clause->{term} eq Term->CUT) {
-                        $p = TermList->new(Cut->new($stackTop));
+                    if ( $clause->{term} eq Term->CUT ) {
+                        $p = TermList->new( Cut->new($stackTop) );
                     }
                     else {
-                        $p = TermList->new($clause->{term}->refresh($vars));
+                        $p = TermList->new( $clause->{term}->refresh($vars) );
                     }
 
-                    if ($i == 1) {
+                    if ( $i == 1 ) {
                         $p1 = $ptail = $p;
                     }
                     else {
                         $ptail->next($p);
-                        $ptail = $p; # XXX ?
+                        $ptail = $p;    # XXX ?
                     }
                     $clause = $clause->{next};
                 }
-                $ptail->next($self->{_goal}->{next});
+                $ptail->next( $self->{_goal}->{next} );
                 $self->{_goal} = $p1;
-                $self->{_goal}->resolve($self->{_db});
+                $self->{_goal}->resolve( $self->{_db} );
             }
         }
-        else { # unify failed.  Must backtrack
+        else {                          # unify failed.  Must backtrack
             return unless $self->backtrack;
         }
     }
@@ -299,44 +310,46 @@ sub _run {
 sub backtrack {
     my $self = shift;
     _print(" <<== Backtrack: \n") if $self->{_trace};
-    while (@{$self->{_stack}}) {
-        my $o = pop @{$self->{_stack}};
+    while ( @{ $self->{_stack} } ) {
+        my $o = pop @{ $self->{_stack} };
 
-        if (UNIVERSAL::isa($o, Term)) {
+        if ( UNIVERSAL::isa( $o, Term ) ) {
             $o->unbind;
         }
-        elsif (UNIVERSAL::isa($o, ChoicePoint)) {
+        elsif ( UNIVERSAL::isa( $o, ChoicePoint ) ) {
             $self->{_goal} = $o->{goal};
+
             # XXX This could be very dangerous if we accidentally try
             # to assign a term to itself!  See ChoicePoint->next_clause
-            $self->{_goal}->next_clause($o->{clause});
+            $self->{_goal}->next_clause( $o->{clause} );
             return 1;
         }
     }
     return;
 }
 
-sub _print { # convenient testing hook
+sub _print {    # convenient testing hook
     print @_;
 }
 
-sub _warn { # convenient testing hook
+sub _warn {     # convenient testing hook
     warn @_;
 }
 
-use constant RETURN   => 2;
+use constant RETURN => 2;
 
-sub do_primitive { # returns false if fails
-    my ($self, $term, $c) = @_;
-    my $primitive = AI::Prolog::Engine::Primitives->find($c->ID)
-        or die sprintf "Cannot find primitive for %s (ID: %d)\n", $term->to_string, $c->ID;
-    return unless my $result = $primitive->($self, $term, $c);
+sub do_primitive {    # returns false if fails
+    my ( $self, $term, $c ) = @_;
+    my $primitive = AI::Prolog::Engine::Primitives->find( $c->ID )
+        or die sprintf "Cannot find primitive for %s (ID: %d)\n",
+        $term->to_string, $c->ID;
+    return unless my $result = $primitive->( $self, $term, $c );
     return 1 if RETURN == $result;
     $self->{_goal} = $self->{_goal}->next;
-    if ($self->{_goal}) {
-        $self->{_goal}->resolve($self->{_db});
+    if ( $self->{_goal} ) {
+        $self->{_goal}->resolve( $self->{_db} );
     }
-    return 1; 
+    return 1;
 }
 
 1;

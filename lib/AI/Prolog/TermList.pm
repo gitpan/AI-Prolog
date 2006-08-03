@@ -6,6 +6,8 @@ $VERSION = 0.03;
 use strict;
 use warnings;
 
+use Hash::Util 'lock_keys';
+
 use aliased 'AI::Prolog::Term';
 use aliased 'AI::Prolog::Term::Number';
 use aliased 'AI::Prolog::Parser';
@@ -13,32 +15,41 @@ use aliased 'AI::Prolog::TermList::Clause';
 use aliased 'AI::Prolog::TermList::Primitive';
 
 sub new {
+
     #my ($proto, $parser, $nexttermlist, $definertermlist) = @_;
     my $proto = shift;
-    my $class = ref $proto || $proto; # yes, I know what I'm doing
-    return _new_from_term($class, @_)          if 1 == @_ && $_[0]->isa(Term);
-    return _new_from_term_and_next($class, @_) if 2 == @_;
+    my $class = ref $proto || $proto;    # yes, I know what I'm doing
+    return _new_from_term( $class, @_ ) if 1 == @_ && $_[0]->isa(Term);
+    return _new_from_term_and_next( $class, @_ ) if 2 == @_;
     if (@_) {
         require Carp;
         Carp::croak "Unknown arguments to TermList->new:  @_";
     }
-    bless {
-        term       => undef,
-        next       => undef,
-        next_clause => undef, # serves two purposes: either links clauses in database
-                             # or points to defining clause for goals
+    my $self = bless {
+        term        => undef,
+        next        => undef,
+        next_clause =>
+            undef,    # serves two purposes: either links clauses in database
+                      # or points to defining clause for goals
+        is_builtin => undef,
+
+        varname  => undef,
+        ID       => undef,
+        _results => undef,
     } => $class;
+    lock_keys %$self;
+    return $self;
 }
 
 sub _new_from_term {
-    my ($class, $term) = @_;
+    my ( $class, $term ) = @_;
     my $self = $class->new;
     $self->{term} = $term;
     return $self;
 }
 
 sub _new_from_term_and_next {
-    my ($class, $term, $next) = @_;
+    my ( $class, $term, $next ) = @_;
     my $self = $class->_new_from_term($term);
     $self->{next} = $next;
     return $self;
@@ -58,10 +69,11 @@ sub next {
 sub next_clause {
     my $self = shift;
     if (@_) {
+
         # XXX debug
         my $next_clause = shift;
         no warnings 'uninitialized';
-        if ($next_clause eq $self) {
+        if ( $next_clause eq $self ) {
             require Carp;
             Carp::confess("Trying to assign a termlist as its own successor");
         }
@@ -72,9 +84,10 @@ sub next_clause {
 }
 
 sub to_string {
-    my $self = shift;
-    my $indent = "\n\t";
+    my $self      = shift;
+    my $indent    = "\n\t";
     my $to_string = $indent . $self->term->to_string;
+
     #my $to_string = "[" . $self->term->to_string;
     my $tl = $self->next;
     while ($tl) {
@@ -84,10 +97,10 @@ sub to_string {
     return $to_string;
 }
 
-sub resolve { # a.k.a. lookup_in
-    my ($self, $kb) = @_;
+sub resolve {    # a.k.a. lookup_in
+    my ( $self, $kb ) = @_;
     my $predicate = $self->{term}->predicate;
-    $self->next_clause($kb->get($predicate));
+    $self->next_clause( $kb->get($predicate) );
 }
 
 1;

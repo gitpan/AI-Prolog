@@ -5,6 +5,7 @@ $VERSION = '0.10';
 use strict;
 use warnings;
 use Regexp::Common;
+use Hash::Util 'lock_keys';
 
 # debugging stuff
 use Clone;
@@ -18,14 +19,14 @@ use aliased 'AI::Prolog::Term::Number';
 use aliased 'AI::Prolog::TermList';
 use aliased 'AI::Prolog::TermList::Clause';
 use aliased 'AI::Prolog::TermList::Primitive';
-        
+
 my $ATOM = qr/[[:alpha:]][[:alnum:]_]*/;
 
 use constant NULL => 'null';
 
 sub new {
-    my ($class, $string) = @_;
-    bless {
+    my ( $class, $string ) = @_;
+    my $self = bless {
         _str      => PreProcessor->process($string),
         _posn     => 0,
         _start    => 0,
@@ -33,44 +34,44 @@ sub new {
         _internal => 0,
         _vardict  => {},
     } => $class;
+    lock_keys %$self;
+    return $self;
 }
 
 sub _vardict_to_string {
-    my $self  = shift;
-    return "{" .
-        (join ', ' => 
-            map  { join '=' => $_->[0], $_->[1] }
+    my $self = shift;
+    return "{"
+        . (
+        join ', ' => map { join '=' => $_->[0], $_->[1] }
             sort { $a->[2] <=> $b->[2] }
-            map  { [$_ , $self->_sortable_term($self->{_vardict}{$_}) ] }
-                keys %{$self->{_vardict}})
-        ."}";
+            map { [ $_, $self->_sortable_term( $self->{_vardict}{$_} ) ] }
+            keys %{ $self->{_vardict} }
+        )
+        . "}";
 }
 
 sub _sortable_term {
-    my ($self, $term) = @_;
+    my ( $self, $term ) = @_;
     my $string = $term->to_string;
     my $number = substr $string => 1;
     return $string, $number;
 }
 
 sub to_string {
-    my $self = shift;
+    my $self   = shift;
     my $output = Clone::clone($self);
     $output->{_vardict} = $self->_vardict_to_string;
-    return "{" 
-        . substr($self->{_str}, 0, $self->{_posn})
-        . " ^ " 
-        . substr($self->{_str}, $self->{_posn}) 
-        . " | " 
-        . $self->_vardict_to_string
-        . " }";
+    return "{"
+        . substr( $self->{_str}, 0, $self->{_posn} ) . " ^ "
+        . substr( $self->{_str}, $self->{_posn} ) . " | "
+        . $self->_vardict_to_string . " }";
 }
 
-sub _posn    {shift->{_posn}   }
-sub _str     {shift->{_str}    }
-sub _start   {shift->{_start}  }
-sub _varnum  {shift->{_varnum} }
-sub _vardict {shift->{_vardict}}
+sub _posn    { shift->{_posn} }
+sub _str     { shift->{_str} }
+sub _start   { shift->{_start} }
+sub _varnum  { shift->{_varnum} }
+sub _vardict { shift->{_vardict} }
 
 sub _internal {
     my $self = shift;
@@ -92,9 +93,8 @@ sub current {
 sub peek {
     my $self = shift;
     return '#' if $self->empty;
-    return substr($self->{_str} => ($self->{_posn} + 1), 1) || '#';
+    return substr( $self->{_str} => ( $self->{_posn} + 1 ), 1 ) || '#';
 }
-
 
 # is the parsestring empty?
 sub empty {
@@ -103,6 +103,7 @@ sub empty {
 }
 
 my $LINENUM = 1;
+
 sub linenum {
     my $self = shift;
     if (@_) {
@@ -120,6 +121,7 @@ sub advance_linenum {
 # Move a character forward
 sub advance {
     my $self = shift;
+
     # print $self->current; # XXX
     $self->{_posn}++ unless $self->{_posn} >= length $self->{_str};
     $self->advance_linenum if $self->current =~ /[\r\n]/;
@@ -136,16 +138,17 @@ sub getname {
 
     $self->{_start} = $self->{_posn};
     my $getname;
-    if ($self->current =~ /['"]/) {
-        # Normally, Prolog distinguishes between single and double quoted strings
+    if ( $self->current =~ /['"]/ ) {
+
+     # Normally, Prolog distinguishes between single and double quoted strings
         my $string = substr $self->{_str} => $self->{_start};
-        $getname   = extract_delimited($string);
+        $getname = extract_delimited($string);
         $self->{_posn} += length $getname;
-        return substr $getname => 1, length($getname) - 2; # strip the quotes
+        return substr $getname => 1, length($getname) - 2;  # strip the quotes
     }
     else {
-        my $string    = substr $self->{_str} => $self->{_start};
-        ($getname)    = $string =~ /^($ATOM)/;
+        my $string = substr $self->{_str} => $self->{_start};
+        ($getname) = $string =~ /^($ATOM)/;
         $self->{_posn} += length $getname;
         return $getname;
     }
@@ -157,9 +160,9 @@ sub getnum {
     my $self = shift;
 
     $self->{_start} = $self->{_posn};
-    my $string      = substr $self->{_str} => $self->{_start};
-    my ($getnum)    = $string =~ /^($RE{num}{real})/;
-    if ('.' eq substr $getnum => -1, 1) {
+    my $string = substr $self->{_str} => $self->{_start};
+    my ($getnum) = $string =~ /^($RE{num}{real})/;
+    if ( '.' eq substr $getnum => -1, 1 ) {
         $getnum = substr $getnum => 0, length($getnum) - 1;
     }
     $self->{_posn} += length $getnum;
@@ -173,29 +176,31 @@ sub getvar {
     my $string = $self->getname;
     my $term   = $self->{_vardict}{$string};
     unless ($term) {
-        $term = Term->new($self->{_varnum}++); # XXX wrong _varnum?
+        $term = Term->new( $self->{_varnum}++ );    # XXX wrong _varnum?
         $self->{_vardict}{$string} = $term;
     }
-    return ($term, $string);
+    return ( $term, $string );
 }
 
 my $ANON = 'a';
+
 sub get_anon {
-    my $self   = shift;
+    my $self = shift;
+
     # HACK!!!
-    my $string = '___'.$ANON++;
+    my $string = '___' . $ANON++;
     $self->advance;
-    my $term   = $self->{_vardict}{$string};
+    my $term = $self->{_vardict}{$string};
     unless ($term) {
-        $term = Term->new($self->{_varnum}++); # XXX wrong _varnum?
+        $term = Term->new( $self->{_varnum}++ );    # XXX wrong _varnum?
         $self->{_vardict}{$string} = $term;
     }
-    return ($term, $string);
+    return ( $term, $string );
 }
 
 # handle errors in one place
 sub parseerror {
-    my ($self, $character) = @_;
+    my ( $self, $character ) = @_;
     my $linenum = $self->linenum;
     require Carp;
     Carp::croak "Unexpected character: ($character) at line number $linenum";
@@ -211,23 +216,23 @@ sub skipspace {
 # XXX Other subtle differences
 sub _skipcomment {
     my $self = shift;
-    if ($self->current eq '%') {
-        while ($self->current ne "\n" && $self->current ne "#") {
+    if ( $self->current eq '%' ) {
+        while ( $self->current ne "\n" && $self->current ne "#" ) {
             $self->advance;
         }
         $self->skipspace;
     }
-    if ($self->current eq "/") {
+    if ( $self->current eq "/" ) {
         $self->advance;
-        if ($self->current ne "*") {
+        if ( $self->current ne "*" ) {
             $self->parseerror("Expecting '*' after '/'");
         }
         $self->advance;
-        while ($self->current ne "*" && $self->current ne "#") {
+        while ( $self->current ne "*" && $self->current ne "#" ) {
             $self->advance;
         }
         $self->advance;
-        if ($self->current ne "/") {
+        if ( $self->current ne "/" ) {
             $self->parseerror("Expecting terminating '/' on comment");
         }
         $self->advance;
@@ -248,14 +253,14 @@ sub nextclause {
 # clauses parsed.
 # class method, not an instance method
 sub consult {
-    my ($class, $program, $db) = @_;
+    my ( $class, $program, $db ) = @_;
     $db ||= KnowledgeBase->new;
     my $self = $class->new($program);
     $self->linenum(1);
     $self->skipspace;
 
-    until ($self->empty) {
-        my $termlist  = $self->_termlist;
+    until ( $self->empty ) {
+        my $termlist = $self->_termlist;
 
         my $head = $termlist->term;
         my $body = $termlist->next;
@@ -266,33 +271,34 @@ sub consult {
             $is_primitive = exists $db->{primitives}{$predicate};
         }
         my $add = $is_primitive ? 'add_primitive' : 'add_clause';
-        my $clause = Clause->new($head,$body);
+        my $clause = Clause->new( $head, $body );
         my $adding_builtins = Engine->_adding_builtins;
         $clause->is_builtin(1) if $adding_builtins;
-        $db->$add($clause, $adding_builtins);
+        $db->$add( $clause, $adding_builtins );
         $self->skipspace;
-        $self->nextclause; # new set of vars
+        $self->nextclause;    # new set of vars
     }
     return $db;
 }
 
 sub resolve {
-    my ($class, $db) = @_;
-    foreach my $termlist (values %{$db->ht}) {
+    my ( $class, $db ) = @_;
+    foreach my $termlist ( values %{ $db->ht } ) {
         $termlist->resolve($db);
     }
 }
 
 sub _termlist {
-    my ($self) = @_;
+    my ($self)   = @_;
     my $termlist = TermList->new;
-    my @ts   = $self->_term;
+    my @ts       = $self->_term;
     $self->skipspace;
 
-    if ($self->current eq ':') {
+    if ( $self->current eq ':' ) {
         $self->advance;
 
-        if ($self->current eq '=') {
+        if ( $self->current eq '=' ) {
+
             # we're parsing a primitive
             $self->advance;
             $self->skipspace;
@@ -301,7 +307,7 @@ sub _termlist {
             $termlist->{term} = $ts[0];
             $termlist->{next} = Primitive->new($id);
         }
-        elsif ($self->current ne '-') {
+        elsif ( $self->current ne '-' ) {
             $self->parseerror("Expected '-' after ':'");
         }
         else {
@@ -311,7 +317,7 @@ sub _termlist {
             push @ts => $self->_term;
             $self->skipspace;
 
-            while ($self->current eq ',') {
+            while ( $self->current eq ',' ) {
                 $self->advance;
                 $self->skipspace;
                 push @ts => $self->_term;
@@ -319,8 +325,8 @@ sub _termlist {
             }
 
             my @tsl;
-            for my $j (reverse 1 .. $#ts) {
-                $tsl[$j] = $termlist->new($ts[$j], $tsl[$j+1]);
+            for my $j ( reverse 1 .. $#ts ) {
+                $tsl[$j] = $termlist->new( $ts[$j], $tsl[ $j + 1 ] );
             }
 
             $termlist->{term} = $ts[0];
@@ -332,7 +338,7 @@ sub _termlist {
         $termlist->{next} = undef;
     }
 
-    if ($self->current ne '.') {
+    if ( $self->current ne '.' ) {
         $self->parseerror("Expected '.' Got '@{[$self->current]}'");
     }
     $self->advance;
@@ -344,67 +350,69 @@ sub _termlist {
 # Example: my $term = Term->new(Parser->new("p(1,a(X,b))"));
 sub _term {
     my ($self) = @_;
-    my $term = Term->new(undef, 0);
+    my $term = Term->new( undef, 0 );
     my $ts   = [];
     my $i    = 0;
 
-    $self->skipspace; # otherwise we crash when we hit leading
-                        # spaces
-    if ($self->current =~ /^[[:lower:]'"]$/) {
+    $self->skipspace;    # otherwise we crash when we hit leading
+                         # spaces
+    if ( $self->current =~ /^[[:lower:]'"]$/ ) {
         $term->{functor} = $self->getname;
         $term->{bound}   = 1;
         $term->{deref}   = 0;
 
-        if ('(' eq $self->current) {
+        if ( '(' eq $self->current ) {
             $self->advance;
             $self->skipspace;
-            $ts->[$i++] = $self->_term;
+            $ts->[ $i++ ] = $self->_term;
             $self->skipspace;
 
-            while (',' eq $self->current) {
+            while ( ',' eq $self->current ) {
                 $self->advance;
                 $self->skipspace;
-                $ts->[$i++] = $self->_term;
+                $ts->[ $i++ ] = $self->_term;
                 $self->skipspace;
             }
 
-            if (')' ne $self->current) {
-                $self->parseerror("Expecting: ')'.  Got (@{[$self->current]})");
+            if ( ')' ne $self->current ) {
+                $self->parseerror(
+                    "Expecting: ')'.  Got (@{[$self->current]})");
             }
 
             $self->advance;
             $term->{args} = [];
 
-            $term->{args}[$_] = $ts->[$_] for 0 .. ($i -1);
+            $term->{args}[$_] = $ts->[$_] for 0 .. ( $i - 1 );
             $term->{arity} = $i;
         }
         else {
-           $term->{arity} = 0;
+            $term->{arity} = 0;
         }
     }
-    elsif ($self->current =~ /^[[:upper:]]$/) {
-        $term->{bound}     = 1;
-        $term->{deref}     = 1;
-        my ($ref, $string) = $self->getvar;
-        $term->{ref}       = $ref;
-        $term->{varname}   = $string;
+    elsif ( $self->current =~ /^[[:upper:]]$/ ) {
+        $term->{bound} = 1;
+        $term->{deref} = 1;
+        my ( $ref, $string ) = $self->getvar;
+        $term->{ref}     = $ref;
+        $term->{varname} = $string;
     }
-    elsif ('_' eq $self->current && $self->peek =~ /^[\]\|\.;\s\,\)]$/) {
+    elsif ( '_' eq $self->current && $self->peek =~ /^[\]\|\.;\s\,\)]$/ ) {
+
         # temporary hack to allow anonymous variables
         # this should really be cleaned up
-        $term->{bound}     = 1;
-        $term->{deref}     = 1;
-        my ($ref, $string) = $self->get_anon;
-        $term->{ref}       = $ref;
-        $term->{varname}   = $string;
+        $term->{bound} = 1;
+        $term->{deref} = 1;
+        my ( $ref, $string ) = $self->get_anon;
+        $term->{ref}     = $ref;
+        $term->{varname} = $string;
     }
-    elsif ($self->current =~ /^[-.[:digit:]]$/) {
-        return Number->new($self->getnum);
+    elsif ( $self->current =~ /^[-.[:digit:]]$/ ) {
+        return Number->new( $self->getnum );
     }
-    elsif ('[' eq $self->current) {
+    elsif ( '[' eq $self->current ) {
         $self->advance;
 
-        if (']' eq $self->current) {
+        if ( ']' eq $self->current ) {
             $self->advance;
             $term->{functor} = NULL;
             $term->{arity}   = 0;
@@ -413,27 +421,27 @@ sub _term {
         }
         else {
             $self->skipspace;
-            $ts->[$i++] = $self->_term;
+            $ts->[ $i++ ] = $self->_term;
             $self->skipspace;
 
-            while (',' eq $self->current) {
+            while ( ',' eq $self->current ) {
                 $self->advance;
                 $self->skipspace;
-                $ts->[$i++] = $self->_term;
+                $ts->[ $i++ ] = $self->_term;
                 $self->skipspace;
             }
 
-            if ('|' eq $self->current) {
+            if ( '|' eq $self->current ) {
                 $self->advance;
                 $self->skipspace;
-                $ts->[$i++] = $self->_term;
+                $ts->[ $i++ ] = $self->_term;
                 $self->skipspace;
             }
             else {
-                $ts->[$i++] = $term->new(NULL, 0);
+                $ts->[ $i++ ] = $term->new( NULL, 0 );
             }
 
-            if (']' ne $self->current) {
+            if ( ']' ne $self->current ) {
                 $self->parseerror("Expecting ']'");
             }
 
@@ -443,22 +451,24 @@ sub _term {
             $term->{functor} = "cons";
             $term->{arity}   = 2;
             $term->{args}    = [];
-            for my $j (reverse 1 .. $i - 2) {
-                my $term = $term->new("cons", 2);
-                $term->setarg(0, $ts->[$j]);
-                $term->setarg(1, $ts->[$j+1]);
+            for my $j ( reverse 1 .. $i - 2 ) {
+                my $term = $term->new( "cons", 2 );
+                $term->setarg( 0, $ts->[$j] );
+                $term->setarg( 1, $ts->[ $j + 1 ] );
                 $ts->[$j] = $term;
             }
             $term->{args}[0] = $ts->[0];
             $term->{args}[1] = $ts->[1];
         }
     }
-    elsif ('!' eq $self->current) {
+    elsif ( '!' eq $self->current ) {
         $self->advance;
         return $term->CUT;
     }
     else {
-        $self->parseerror("Term should begin with a letter, a digit, or '[', not a @{[$self->current]}");
+        $self->parseerror(
+            "Term should begin with a letter, a digit, or '[', not a @{[$self->current]}"
+        );
     }
     return $term;
 }

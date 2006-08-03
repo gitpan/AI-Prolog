@@ -5,6 +5,8 @@ $VERSION = '0.06';
 use strict;
 use warnings;
 
+use Hash::Util 'lock_keys';
+
 use aliased 'AI::Prolog::Term::Cut';
 use aliased 'AI::Prolog::Parser';
 
@@ -26,8 +28,9 @@ my $VARNUM = 1;
 # which resulted in lower performance.
 
 my $OCCURCHECK = 0;
+
 sub occurcheck {
-    my ($class, $value) = @_;
+    my ( $class, $value ) = @_;
     $OCCURCHECK = $value if defined $value;
     return $OCCURCHECK;
 }
@@ -35,97 +38,129 @@ sub occurcheck {
 # controls printing of lists as [a,b]
 # instead of cons(a, cons(b, null))
 
-sub prettyprint { 1 }
+sub prettyprint {1}
 
 my $CUT = Cut->new(0);
-sub CUT { $CUT }
+sub CUT {$CUT}
 
 sub new {
     my $proto = shift;
-    my $class = CORE::ref $proto || $proto; # yes, I know what I'm doing
+    my $class = CORE::ref $proto || $proto;    # yes, I know what I'm doing
     return $class->_new_var unless @_;
-    if (2 == @_) { # more common (performance)
-        return _new_from_functor_and_arity($class, @_) unless 'ARRAY' eq CORE::ref $_[1];
+    if ( 2 == @_ ) {    # more common (performance)
+        return _new_from_functor_and_arity( $class, @_ )
+            unless 'ARRAY' eq CORE::ref $_[1];
     }
-    elsif (1 == @_) {
+    elsif ( 1 == @_ ) {
         my $arg = shift;
-        return _new_with_id($class, $arg)     if ! CORE::ref $arg && $arg =~ /^[[:digit:]]+$/;
-        return _new_from_string($class, $arg) if ! CORE::ref $arg;
-        #return $arg->_term($class)            if   CORE::ref $arg && $arg->isa(Parser);
+        return _new_with_id( $class, $arg )
+            if !CORE::ref $arg && $arg =~ /^[[:digit:]]+$/;
+        return _new_from_string( $class, $arg ) if !CORE::ref $arg;
+
+#return $arg->_term($class)            if   CORE::ref $arg && $arg->isa(Parser);
     }
     require Carp;
     Carp::croak("Unknown arguments to Term->new");
 }
 
 sub _new_from_string {
-    my ($class, $string) = @_;
-    my $parsed = Parser->new($string)->_term($class);;
+    my ( $class, $string ) = @_;
+    my $parsed = Parser->new($string)->_term($class);
 }
 
 sub _new_var {
     my $class = shift;
+
     #print "*** _new_var @{[$VARNUM+1]}";
-    bless {
+    my $self = bless {
         functor => undef,
         arity   => 0,
         args    => [],
+
         # if bound is false, $self is a reference to a free variable
-        bound   => 0,
-        varid   => $VARNUM++,
+        bound => 0,
+        varid => $VARNUM++,
+
         # if bound and deref are both true, $self is a reference to a ref
-        deref   => 0,
-        ref     => undef,
+        deref => 0,
+        ref   => undef,
+
+        ID       => undef,
+        varname  => undef,
+        _results => undef,
+
         #source  => "_new_var",
     } => $class;
+    lock_keys %$self;
+    return $self;
 }
 
 sub _new_with_id {
-    my ($class, $id) = @_;
+    my ( $class, $id ) = @_;
+
     #print "*** _new_with_id: $id";
-    bless {
+    my $self = bless {
         functor => undef,
         arity   => 0,
         args    => [],
+
         # if bound is false, $self is a reference to a free variable
-        bound   => 0,
-        varid   => $id,
+        bound => 0,
+        varid => $id,
+
         # if bound and deref are both true, $self is a reference to a ref
-        deref   => 0,
-        ref     => undef,
+        deref => 0,
+        ref   => undef,
+
+        varname  => undef,
+        ID       => undef,
+        _results => undef,
+
         #source  => "_new_with_id: $id",
     } => $class;
+    lock_keys %$self;
+    return $self;
 }
 
 sub _new_from_functor_and_arity {
-    my ($class, $functor, $arity) = @_;
+    my ( $class, $functor, $arity ) = @_;
     my $print_functor = defined $functor ? $functor : 'null';
     Carp::confess "undefined arity" unless defined $arity;
+
     #print "*** _new_from_functor_and_arity: ($print_functor) ($arity)";
-    bless {
+    my $self = bless {
         functor => $functor,
         arity   => $arity,
         args    => [],
+
         # if bound is false, $self is a reference to a free variable
-        bound   => 1,
-        varid   => 0, # XXX ??
-        # if bound and deref are both true, $self is a reference to a ref
-        deref   => 0,
-        ref     => undef,
+        bound => 1,
+        varid => 0,    # XXX ??
+             # if bound and deref are both true, $self is a reference to a ref
+        deref => 0,
+        ref   => undef,
+
+        varname  => undef,
+        ID       => undef,
+        _results => undef,
+
         #source  => "_new_from_functor_and_arity: ($print_functor) ($arity)",
     } => $class;
+    lock_keys %$self;
+    return $self;
 }
 
-sub varnum    { $VARNUM          } # class method
-sub functor   { shift->{functor} }
-sub arity     { shift->{arity}   }
-sub args      { shift->{args}    }
-sub varid     { shift->{varid}   }
-sub ref       { shift->{ref}     }
+sub varnum  {$VARNUM}              # class method
+sub functor { shift->{functor} }
+sub arity   { shift->{arity} }
+sub args    { shift->{args} }
+sub varid   { shift->{varid} }
+sub ref     { shift->{ref} }
 sub predicate { sprintf "%s/%d" => $_[0]->getfunctor, $_[0]->getarity }
 
 sub deref {
     my $self = shift;
-    while ($self->{bound} && $self->{deref}) {
+    while ( $self->{bound} && $self->{deref} ) {
         $self = $self->{ref};
     }
     return $self;
@@ -133,7 +168,7 @@ sub deref {
 
 sub bound {
     my $self = shift;
-    while ($self->{bound} && $self->{deref}) {
+    while ( $self->{bound} && $self->{deref} ) {
         $self = $self->{ref};
     }
     return $self->{bound};
@@ -142,29 +177,31 @@ sub bound {
 sub is_bound { shift->bound }
 
 sub traceln {
-    my ($self, $msg) = @_;
-    if ($self->{trace}) {
+    my ( $self, $msg ) = @_;
+    if ( $self->{trace} ) {
         print "$msg\n";
     }
 }
 
 sub dup {
     my $self = shift;
-    $self->new($self->{functor},$self->{arity});
+    $self->new( $self->{functor}, $self->{arity} );
 }
 
 # bind a variable to a term
 sub bind {
-    my ($self, $term) = @_;
+    my ( $self, $term ) = @_;
     return if $self eq $term;
-    unless ($self->{bound}) {
+    unless ( $self->{bound} ) {
         $self->{bound} = 1;
         $self->{deref} = 1;
         $self->{ref}   = $term;
     }
     else {
         require Carp;
-        Carp::croak("AI::Prolog::Term->bind(".$self->to_string.").  Cannot bind to nonvar!");
+        Carp::croak( "AI::Prolog::Term->bind("
+                . $self->to_string
+                . ").  Cannot bind to nonvar!" );
     }
 }
 
@@ -173,6 +210,7 @@ sub unbind {
     my $self = shift;
     $self->{bound} = 0;
     $self->{ref}   = undef;
+
     # XXX Now possible for a bind to have had no effect so ignore safety test
     # XXX if (bound) bound = false;
     # XXX else IO.error("Term.unbind","Can't unbind var!");
@@ -182,27 +220,31 @@ sub unbind {
 # create them with Term(s,f) and then build up the arguments.  Using the
 # parser is much simpler
 sub setarg {
-    my ($self, $pos, $val) = @_;
-    if ($self->{bound} && ! $self->{deref}) {
+    my ( $self, $pos, $val ) = @_;
+    if ( $self->{bound} && !$self->{deref} ) {
         $self->{args}[$pos] = $val;
     }
     else {
         require Carp;
-        Carp::croak("AI::Prolog::Term->setarg($pos, ".$val->to_string.").  Cannot setarg on variables!");
+        Carp::croak( "AI::Prolog::Term->setarg($pos, "
+                . $val->to_string
+                . ").  Cannot setarg on variables!" );
     }
 }
 
 # retrieves an argument of a term
 sub getarg {
-    my ($self, $pos) = @_;
+    my ( $self, $pos ) = @_;
+
     # should check if position is valid
-    if ($self->{bound}) {
+    if ( $self->{bound} ) {
         return $self->{ref}->getarg($pos) if $self->{deref};
         return $self->{args}[$pos];
     }
     else {
         require Carp;
-        Carp::croak("AI::Prolog::Term->getarg.  Error -- lookup on unbound term!");
+        Carp::croak(
+            "AI::Prolog::Term->getarg.  Error -- lookup on unbound term!");
     }
 }
 
@@ -224,16 +266,16 @@ sub getarity {
 # XXX Since a variable is not consideref to occur in itself,
 # XXX added occurs1 and a new front end called occurs()
 sub occurs {
-    my ($self, $var) = @_;
+    my ( $self, $var ) = @_;
     return if $self->{varid} == $var;
     return $self->occurs1($var);
 }
 
 sub occurs1 {
-    my ($self, $var) = @_;
-    if ($self->{bound}) {
+    my ( $self, $var ) = @_;
+    if ( $self->{bound} ) {
         return $self->ref->occurs1($var) if $self->{deref};
-        for my $i (0 .. $self->arity - 1) {
+        for my $i ( 0 .. $self->arity - 1 ) {
             return 1 if $self->{args}[$i]->occurs1($var);
         }
     }
@@ -247,29 +289,30 @@ sub _dumpit {
     local $^W;
     my $self = shift;
     my $indent = shift || '';
-    print($indent . "source:  ", $self->{source});
-    print($indent . "bound:  ", ($self->{bound} ? 'true' : 'false'));
-    print($indent . "functor:  ", ($self->{functor} || 'null'));
-    if (! $self->{ref}) {
-        print($indent . "ref:  null");
+    print( $indent . "source:  ", $self->{source} );
+    print( $indent . "bound:  ", ( $self->{bound} ? 'true' : 'false' ) );
+    print( $indent . "functor:  ", ( $self->{functor} || 'null' ) );
+    if ( !$self->{ref} ) {
+        print( $indent . "ref:  null" );
     }
     else {
-        print("\n$indent" . "ref:");
-        $self->{ref}->_dumpit($indent.'  ');
+        print( "\n$indent" . "ref:" );
+        $self->{ref}->_dumpit( $indent . '  ' );
     }
-    print($indent . "arity:  ", $self->{arity});
-    if (defined $self->{args}[0]) {
-        print($indent."args:");
-        foreach (@{$self->{args}}) {
-            $_->_dumpit($indent . "  ");
+    print( $indent . "arity:  ", $self->{arity} );
+    if ( defined $self->{args}[0] ) {
+        print( $indent. "args:" );
+        foreach ( @{ $self->{args} } ) {
+            $_->_dumpit( $indent . "  " );
         }
     }
     else {
-        print($indent."args:  null");
+        print( $indent. "args:  null" );
     }
-    #print($indent . "args:  ", scalar @{$self->{args}}) if defined $self->{args}[0];
-    print($indent . "deref:  ", ($self->{deref} ? 'true' : 'false'));
-    print($indent . "varid:  ", $self->{varid}, "\n");
+
+#print($indent . "args:  ", scalar @{$self->{args}}) if defined $self->{args}[0];
+    print( $indent . "deref:  ", ( $self->{deref} ? 'true' : 'false' ) );
+    print( $indent . "varid:  ", $self->{varid}, "\n" );
 }
 
 # Unification is the basic primitive operation in logic programming.
@@ -277,40 +320,47 @@ sub _dumpit {
 # are bound by the unification.  This is needed when backtracking.
 
 sub unify {
-    my ($self, $term, $stack) = @_;
+    my ( $self, $term, $stack ) = @_;
+
     #_dumpit($self);
     #_dumpit($term);
-    
-    foreach ($self, $term) {
+
+    foreach ( $self, $term ) {
         $_ = $_->{ref} while $_->{bound} and $_->{deref};
     }
 
-    if ($self->{bound} and $term->{bound}) { # bound and not deref
-        if ($self->functor eq $term->getfunctor && $self->arity == $term->getarity) {
-            for my $i (0 .. $self->arity - 1) {
-                return unless $self->{args}[$i]->unify($term->getarg($i), $stack);
+    if ( $self->{bound} and $term->{bound} ) {    # bound and not deref
+        if (   $self->functor eq $term->getfunctor
+            && $self->arity == $term->getarity )
+        {
+            for my $i ( 0 .. $self->arity - 1 ) {
+                return
+                    unless $self->{args}[$i]
+                    ->unify( $term->getarg($i), $stack );
             }
             return 1;
         }
         else {
-            return; # functor/arity don't match ...
+            return;    # functor/arity don't match ...
         }
-    } # at least one arg not bound ...
-    if ($self->{bound}) {
+    }    # at least one arg not bound ...
+    if ( $self->{bound} ) {
+
         # added missing occurcheck
-        if ($self->occurcheck) {
-            if ($self->occurs($term->varid)) {
+        if ( $self->occurcheck ) {
+            if ( $self->occurs( $term->varid ) ) {
                 return;
             }
         }
         $term->bind($self);
-        push @{$stack} => $term; # side-effect -- setting stack vars
+        push @{$stack} => $term;    # side-effect -- setting stack vars
         return 1;
     }
+
     # do occurcheck if turned on
-    return if $self->occurcheck && $term->occurs($self->varid);
+    return if $self->occurcheck && $term->occurs( $self->varid );
     $self->bind($term);
-    push @{$stack} => $self; # save for backtracking
+    push @{$stack} => $self;        # save for backtracking
     return 1;
 }
 
@@ -320,92 +370,102 @@ sub unify {
 # Includes a copy operation.
 
 sub refresh {
-    my ($self, $term_aref) = @_;
-    if ($self->{bound}) {
-        if ($self->{deref}) {
+    my ( $self, $term_aref ) = @_;
+    if ( $self->{bound} ) {
+        if ( $self->{deref} ) {
             return $self->{ref}->refresh($term_aref);
         }
         else {
-            if (0 == $self->{arity}) {
+            if ( 0 == $self->{arity} ) {
                 return $self;
             }
             else {
-                my $term = (CORE::ref $self)->_new_from_functor_and_arity($self->{functor},$self->{arity});
-                for my $i (0 .. $self->{arity} - 1) {
-                    $term->{args}[$i] = $self->{args}[$i]->refresh($term_aref);
+                my $term = ( CORE::ref $self)
+                    ->_new_from_functor_and_arity( $self->{functor},
+                    $self->{arity} );
+                for my $i ( 0 .. $self->{arity} - 1 ) {
+                    $term->{args}[$i]
+                        = $self->{args}[$i]->refresh($term_aref);
                 }
                 return $term;
             }
         }
     }
+
     # else unbound
-    unless ( $term_aref->[$self->{varid}] ) {
-        $term_aref->[$self->{varid}] = $self->new;
+    unless ( $term_aref->[ $self->{varid} ] ) {
+        $term_aref->[ $self->{varid} ] = $self->new;
     }
-    return $term_aref->[$self->{varid}];
+    return $term_aref->[ $self->{varid} ];
 }
 
 sub to_data {
     my $self = shift;
     $self->{_results} = {};
+
     # @results is the full results, if we ever need it
     my @results = $self->_to_data($self);
-    return AsObject->new($self->{_results}), \@results;
+    return AsObject->new( $self->{_results} ), \@results;
 }
 
 sub _to_data {
-    my ($self, $parent) = @_;
-    if (defined $self->{varname}) {
+    my ( $self, $parent ) = @_;
+    if ( defined $self->{varname} ) {
+
         # XXX here's where the [HEAD|TAIL] bug is.  The engine works fine,
         # but we can't bind TAIL to a result object and are forced to
         # switch to raw_results.
         my $varname = delete $self->{varname};
-        ($parent->{_results}{$varname}) = $self->_to_data($parent);
+        ( $parent->{_results}{$varname} ) = $self->_to_data($parent);
         $self->{varname} = $varname;
     }
-    if ($self->{bound}) {
+    if ( $self->{bound} ) {
         my $functor = $self->functor;
         my $arity   = $self->arity;
         return $self->ref->_to_data($parent) if $self->{deref};
-        return [] if NULL eq $functor && ! $arity;
-        if ("cons" eq $functor && 2 == $arity) {
+        return [] if NULL eq $functor && !$arity;
+        if ( "cons" eq $functor && 2 == $arity ) {
             my @result = $self->{args}[0]->_to_data($parent);
             my $term   = $self->{args}[1];
 
-            while ("cons" eq $term->getfunctor && 2 == $term->getarity) {
+            while ( "cons" eq $term->getfunctor && 2 == $term->getarity ) {
                 push @result => $term->getarg(0)->_to_data($parent);
-                $term    = $term->getarg(1);
+                $term = $term->getarg(1);
             }
 
             # XXX Not really sure about this one
-            push @result => $term->_to_data($parent) 
-                unless NULL eq $term->getfunctor && ! $term->getarity;
+            push @result => $term->_to_data($parent)
+                unless NULL eq $term->getfunctor && !$term->getarity;
+
             #    ? "]"
             #    : "|" . $term->_to_data($parent) . "]";
             return \@result;
         }
         else {
             my @results = $self->functor;
-            if ($self->arity) {
+            if ( $self->arity ) {
+
                 #push @results => [];
                 my $arity = $self->arity;
-                my @args = @{$self->args};
+                my @args  = @{ $self->args };
                 if (@args) {
-                    for my $i (0 .. $arity -1) {
+                    for my $i ( 0 .. $arity - 1 ) {
                         push @results => $args[$i]->_to_data($parent);
                     }
+
                     # I have no idea what the following line was doing.
                     #push @results => $args[$arity - 1]->_to_data($parent)
                 }
             }
             return @results;
         }
-    } # else unbound;
+    }    # else unbound;
     return undef;
 }
 
 my %varname_for;
 my $varname = 'A';
+
 sub to_string {
     require Data::Dumper;
     my $self = shift;
@@ -413,50 +473,53 @@ sub to_string {
 }
 
 sub _to_string {
-    my ($self, $extended) = @_;
-    if ($self->{bound}) {
-        my $functor = $self->functor;
-        my $arity   = $self->arity;
+    my ( $self, $extended ) = @_;
+    if ( $self->{bound} ) {
+        my $functor     = $self->functor;
+        my $arity       = $self->arity;
         my $prettyprint = $self->prettyprint;
         return $self->ref->_to_string($extended) if $self->{deref};
-        return "[]" if NULL eq $functor && ! $arity && $prettyprint;
+        return "[]" if NULL eq $functor && !$arity && $prettyprint;
         my $string;
-        if ("cons" eq $functor && 2 == $arity && $prettyprint) {
+        if ( "cons" eq $functor && 2 == $arity && $prettyprint ) {
             $string = "[" . $self->{args}[0]->_to_string;
             my $term = $self->{args}[1];
 
-            while ("cons" eq $term->getfunctor && 2 == $term->getarity) {
+            while ( "cons" eq $term->getfunctor && 2 == $term->getarity ) {
                 $string .= "," . $term->getarg(0)->_to_string;
-                $term    = $term->getarg(1);
+                $term = $term->getarg(1);
             }
 
-            $string .= (NULL eq $term->getfunctor && ! $term->getarity)
+            $string .=
+                ( NULL eq $term->getfunctor && !$term->getarity )
                 ? "]"
                 : "|" . $term->_to_string . "]";
             return "$string";
         }
         else {
             $string = $self->functor;
-            if ($self->arity) {
+            if ( $self->arity ) {
                 $string .= "(";
-                if ($self->arity) {
-                    local $Data::Dumper::Terse  = 1; # don't use $var1
-                    local $Data::Dumper::Indent = 0; # no newline
-                    my @args = map { 
+                if ( $self->arity ) {
+                    local $Data::Dumper::Terse  = 1;    # don't use $var1
+                    local $Data::Dumper::Indent = 0;    # no newline
+                    my @args = map {
                         my $string = $_->_to_string;
-                        $string =~ /\s/ && ! $_->arity ? Data::Dumper::Dumper($string)
-                        :                     $string;
-                    } @{$self->args};
+                        $string =~ /\s/
+                            && !$_->arity
+                            ? Data::Dumper::Dumper($string)
+                            : $string;
+                    } @{ $self->args };
                     $string .= join ", " => @args;
                 }
-                $string .=  ")";
+                $string .= ")";
             }
         }
         return $string;
-    } # else unbound;
-    # return "_" . $self->varid;
-    my $var = $self->{varname} || $varname_for{$self->varid} || $varname++;
-    $varname_for{$self->varid} = $var;
+    }    # else unbound;
+         # return "_" . $self->varid;
+    my $var = $self->{varname} || $varname_for{ $self->varid } || $varname++;
+    $varname_for{ $self->varid } = $var;
     return $var;
 }
 
@@ -479,25 +542,25 @@ sub clean_up {
 sub _clean_up {
     my $self = shift;
     my $term;
-    if ($self->{bound}) {
-        if ($self->{deref}) {
+    if ( $self->{bound} ) {
+        if ( $self->{deref} ) {
             return $self->{ref}->_clean_up;
         }
-        elsif (defined $self->{arity} && 0 == $self->{arity}) {
+        elsif ( defined $self->{arity} && 0 == $self->{arity} ) {
             return $self;
         }
         else {
             $term = $self->dup;
-            for my $i ( 0 .. $self->{arity} - 1) {
+            for my $i ( 0 .. $self->{arity} - 1 ) {
                 $term->{args}[$i] = $self->{args}[$i]->_clean_up;
             }
         }
     }
-    else { # unbound
+    else {    # unbound
         $term = $CVDICT{$self};
         unless ($term) {
-            $term = $self->new($CVN++);
-            $CVDICT{$self} = $term; # XXX Should this be $self->to_string?
+            $term = $self->new( $CVN++ );
+            $CVDICT{$self} = $term;    # XXX Should this be $self->to_string?
         }
     }
     return $term;
@@ -505,11 +568,12 @@ sub _clean_up {
 
 # From XProlog
 sub value {
+
     # int i, res = 0;
     my $self = shift;
-    my ($i, $res) = (0,0);
-    
-    unless ($self->{bound}) {
+    my ( $i, $res ) = ( 0, 0 );
+
+    unless ( $self->{bound} ) {
         require Carp;
         my $term = $self->to_string;
         Carp::croak("Tried to to get value of unbound term ($term)");
@@ -517,10 +581,11 @@ sub value {
     return $self->{ref}->value if $self->{deref};
     my $functor = $self->getfunctor;
     my $arity   = $self->getarity;
-    if ('rnd' eq $functor && 1 == $arity) {
+    if ( 'rnd' eq $functor && 1 == $arity ) {
+
         # implement rand
     }
-    if ($arity < 2) {
+    if ( $arity < 2 ) {
         require Carp;
         my $term = $self->to_string;
         Carp::croak("Term ($term) is not binary");
@@ -528,12 +593,12 @@ sub value {
     my $arg0 = $self->{args}[0]->value;
     my $arg1 = $self->{args}[1]->value;
 
-    return $arg0 + $arg1  if 'plus'  eq $functor;
-    return $arg0 - $arg1  if 'minus' eq $functor;
-    return $arg0 * $arg1  if 'mult'  eq $functor;
-    return $arg0 / $arg1  if 'div'   eq $functor;
-    return $arg0 % $arg1  if 'mod'   eq $functor;
-    return $arg0 ** $arg1 if 'pow'   eq $functor;
+    return $arg0 + $arg1 if 'plus'  eq $functor;
+    return $arg0 - $arg1 if 'minus' eq $functor;
+    return $arg0 * $arg1 if 'mult'  eq $functor;
+    return $arg0 / $arg1 if 'div'   eq $functor;
+    return $arg0 % $arg1 if 'mod'   eq $functor;
+    return $arg0**$arg1  if 'pow'   eq $functor;
     require Carp;
     Carp::croak("Unknown operator ($functor)");
 }

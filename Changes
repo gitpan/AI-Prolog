@@ -1,5 +1,12 @@
 Revision history for Perl extension AI::Prolog.
 
+0.735_01 2006-07-31
+      Added perlcall2/2.
+      TODO: need ground/1 to constrain the 2nd arg to perlcall2/2.
+      Added Scalar::Util to the pre-reqs. It was already required.
+      Used Hash::Util::lock_keys to lock down object internals access.
+      First release by JJORE.
+
 0.734 2006-04-05
       Added minimum requirement of ExtUtils::MakeMaker 6.30 due to bug report
       filed on RT.  Thanks to zby for the catch.

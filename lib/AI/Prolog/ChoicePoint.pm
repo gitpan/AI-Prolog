@@ -4,16 +4,19 @@ $REVISION = '$Id: ChoicePoint.pm,v 1.5 2005/02/20 18:27:55 ovid Exp $';
 $VERSION = '0.02';
 use strict;
 use warnings;
+use Hash::Util 'lock_keys';
 
 sub new {
-    my ($class, $goal, $clause) = @_;
-    return bless {
+    my ( $class, $goal, $clause ) = @_;
+    my $self = bless {
         goal   => $goal,
         clause => $clause,
     } => $class;
+    lock_keys %$self;
+    return $self;
 }
 
-sub goal   { $_[0]->{goal}   }
+sub goal   { $_[0]->{goal} }
 sub clause { $_[0]->{clause} }
 
 sub to_string {

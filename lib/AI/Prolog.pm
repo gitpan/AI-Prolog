@@ -1,10 +1,10 @@
 package AI::Prolog;
 $REVISION = '$Id: Prolog.pm,v 1.18 2005/08/06 23:28:40 ovid Exp $';
-$VERSION  = '0.734';
+$VERSION  = '0.735_01';
 use strict;
 
-use Exporter::Tidy
-    shortcuts => [qw/Parser Term Engine/];
+use Hash::Util 'lock_keys';
+use Exporter::Tidy shortcuts => [qw/Parser Term Engine/];
 
 use aliased 'AI::Prolog::Parser';
 use aliased 'AI::Prolog::Term';
@@ -15,45 +15,50 @@ use Regexp::Common;
 
 # they don't want pretty printed strings if they're using this interface
 Engine->formatted(0);
+
 # Until (and unless) we figure out the weird bug that prevents some values
 # binding in the external interface, we need to stick with this as the default
 Engine->raw_results(1);
 
 sub new {
-    my ($class, $program) = @_;
+    my ( $class, $program ) = @_;
     my $self = bless {
-        _prog      => Parser->consult($program),
-        _query     => undef,
-        _engine    => undef,
+        _prog   => Parser->consult($program),
+        _query  => undef,
+        _engine => undef,
     } => $class;
+    lock_keys %$self;
     return $self;
 }
 
 sub do {
-    my ($self, $query) = @_;
+    my ( $self, $query ) = @_;
     $self->query($query);
     1 while $self->results;
     $self;
 }
 
 sub query {
-    my ($self, $query) = @_;
+    my ( $self, $query ) = @_;
+
     # make that final period optional
     $query .= '.' unless $query =~ /\.$/;
     $self->{_query} = Term->new($query);
-    unless (defined $self->{_engine}) {
+    unless ( defined $self->{_engine} ) {
+
         # prime the pump
-        $self->{_engine} = Engine->new(@{$self}{qw/_query _prog/});
+        $self->{_engine} = Engine->new( @{$self}{qw/_query _prog/} );
     }
-    $self->{_engine}->query($self->{_query});
+    $self->{_engine}->query( $self->{_query} );
     return $self;
 }
 
-sub results { 
+sub results {
     my $self = shift;
-    unless (defined $self->{_query}) {
+    unless ( defined $self->{_query} ) {
         require Carp;
-        Carp::croak "You can't fetch results because you have not set a query";
+        Carp::croak
+            "You can't fetch results because you have not set a query";
     }
     $self->{_engine}->results;
 }
@@ -77,21 +82,23 @@ sub raw_results {
 }
 
 my $QUOTER;
+
 sub quote {
-    my ($proto, $string) = @_;
+    my ( $proto, $string ) = @_;
     $QUOTER = Text::Quote->new unless $QUOTER;
     return $QUOTER->quote_simple($string);
 }
 
 sub list {
     my $proto = shift;
-    return join ", " => map { /^$RE{num}{real}$/ ? $_ : $proto->quote($_) } @_;
+    return
+        join ", " => map { /^$RE{num}{real}$/ ? $_ : $proto->quote($_) } @_;
 }
 
-sub continue { 
+sub continue {
     my $self = shift;
-    return 1 unless $self->{_engine}; # we haven't started yet!
-    ! $self->{_engine}->halt 
+    return 1 unless $self->{_engine};    # we haven't started yet!
+    !$self->{_engine}->halt;
 }
 
 1;
