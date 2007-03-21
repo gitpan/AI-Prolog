@@ -1,5 +1,15 @@
 Revision history for Perl extension AI::Prolog.
 
+0.736 2007-03-20
+
+      Removed the pre-req for ExtUtils::MakeMaker 6.30 because this
+      doesn't appear to be needed and doesn't have a way to boostrap
+      that requirement into place anyway.
+
+      Also, just upgrade from a "developer" version to prod because
+      none of this is really all that production quality anyway. Or
+      rather... this is just as worthy anyway.
+
 0.735_01 2006-07-31
       Added perlcall2/2.
       TODO: need ground/1 to constrain the 2nd arg to perlcall2/2.
