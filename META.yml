@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                AI-Prolog
-version:             0.736
+version:             0.737
 abstract:            Perl extension for logic programming.
 license:             ~
 generated_by:        ExtUtils::MakeMaker version 6.31
@@ -10,9 +10,12 @@ requires:
     Clone:                         0.15
     Exporter::Tidy:                0.06
     Hash::AsObject:                0.05
+    Hash::Util:                    0
     Pod::Usage:                    1.12
     Regexp::Common:                2.119
     Scalar::Util:                  0
+    Term::ReadKey:                 2.21
+    Term::ReadLine:                1.01
     Test::Differences:             0.47
     Test::Exception:               0.2
     Test::MockModule:              0.04

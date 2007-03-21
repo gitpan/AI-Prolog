@@ -1,6 +1,5 @@
 package AI::Prolog;
-$REVISION = '$Id: Prolog.pm,v 1.18 2005/08/06 23:28:40 ovid Exp $';
-$VERSION  = '0.736';
+$VERSION  = '0.737';
 use strict;
 
 use Hash::Util 'lock_keys';

@@ -1,5 +1,12 @@
 Revision history for Perl extension AI::Prolog.
 
+0.737 2007-03-21
+      Removed the Build.PL because CPAN.pm does the wrong thing here
+      and there's no additional functionality provided by
+      Module::Build that's being used.
+
+      Declared a pre-existing requirement for Hash::Util.
+
 0.736 2007-03-20
 
       Removed the pre-req for ExtUtils::MakeMaker 6.30 because this
