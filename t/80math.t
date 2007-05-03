@@ -2,11 +2,16 @@
 # '$Id: 80math.t,v 1.5 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 31;
+use Test::More;
+eval q{use Test::MockModule;
+use Test::Differences};
+if ($@) {
+    plan skip_all => "Test::MockModule and Test::Differences required for this";
+} else {
+    plan tests => 31;
+}
 #use Test::More qw/no_plan/;
-use Test::MockModule;
 use Clone qw/clone/;
-use Test::Differences;
 
 BEGIN
 {

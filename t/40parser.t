@@ -2,9 +2,16 @@
 # '$Id: 40parser.t,v 1.6 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 76;
+use Test::More;
+BEGIN {
+eval 'use Test::MockModule';
+if ($@) {
+    plan skip_all => 'Test::MockModule required for this';
+} else {
+    plan tests => 76;
+}
+}
 #use Test::More 'no_plan';
-use Test::MockModule;
 
 my $CLASS;
 BEGIN

@@ -2,9 +2,16 @@
 # '$Id: 60aiprolog.t,v 1.3 2005/05/14 18:03:05 ovid Exp $';
 use warnings;
 use strict;
-use Test::More tests => 5;
+use Test::More;
+eval q{
 use Test::MockModule;
-use Test::Differences;
+use Test::Differences};
+if ($@) {
+    plan skip_all => 'Test::MockModule, Test::Differences required for this';
+    exit 0;
+} else {
+    plan tests => 4;
+}
 
 my $CLASS;
 BEGIN

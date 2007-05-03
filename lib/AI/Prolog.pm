@@ -1,5 +1,5 @@
 package AI::Prolog;
-$VERSION  = '0.737';
+$VERSION = '0.738';    ## no critic
 use strict;
 
 use Hash::Util 'lock_keys';
@@ -461,6 +461,11 @@ permission to port this.
 
 Many features also borrowed from X-Prolog L<http://www.iro.umontreal.ca/~vaucher/XProlog/>
 with Dr. Jean Vaucher's permission.
+
+=head1 ACKNOWLEDGEMENTS
+
+Patches and other help has also been provided by: Joshua ben Jore and
+Sean O'Rourke.
 
 =head1 COPYRIGHT AND LICENSE
 
