@@ -3,6 +3,7 @@ $REVISION = '$Id: KnowledgeBase.pm,v 1.5 2005/06/25 23:06:53 ovid Exp $';
 $VERSION  = '0.02';
 use strict;
 use warnings;
+use Carp qw( confess carp );
 
 use Hash::Util 'lock_keys';
 
@@ -30,8 +31,7 @@ sub to_string {
             sort { $a->[2] <=> $b->[2] }
             map { [ $_, $self->_sortable_term( $self->{_vardict}{$_} ) ] }
             keys %{ $self->{ht} }
-        )
-        . "}";
+        ) . "}";
 }
 
 sub _sortable_term {
@@ -83,8 +83,7 @@ sub add_clause {
     my $term      = $clause->term;
     my $predicate = $term->predicate;
     if ( $self->{primitives}{$predicate} ) {
-        require Carp;
-        Carp::carp("Trying to modify primitive predicate: $predicate");
+        carp("Trying to modify primitive predicate: $predicate");
         return;
     }
     unless ( $predicate eq $self->{oldIndex} ) {
@@ -110,8 +109,7 @@ sub assert {
 
     my $predicate = $term->predicate;
     if ( $self->{primitives}{$predicate} ) {
-        require Carp
-            && Carp::carp("Trying to assert a primitive: $predicate");
+        carp("Trying to assert a primitive: $predicate");
         return;
     }
     my $c = $self->{ht}{$predicate};
@@ -130,8 +128,7 @@ sub asserta {
     my ( $self, $term ) = @_;
     my $predicate = $term->predicate;
     if ( $self->{primitives}{$predicate} ) {
-        require Carp
-            && Carp::carp("Trying to assert a primitive: $predicate");
+        carp("Trying to assert a primitive: $predicate");
         return;
     }
     $term = $term->clean_up;
@@ -146,8 +143,7 @@ sub retract {
     my $newC = Clause->new( $term, undef );    #, undef);
     my $predicate = $term->predicate;
     if ( exists $self->{primitives}{$predicate} ) {
-        require Carp
-            && Carp::carp("Trying to retract a primitive: $predicate");
+        carp("Trying to retract a primitive: $predicate");
         return;
     }
     my $cc;
@@ -184,8 +180,7 @@ sub retractall {
     my ( $self, $term, $arity ) = @_;
     my $predicate = $term->predicate;
     if ( $self->{primitives}{$predicate} ) {
-        require Carp
-            && Carp::carp("Trying to retractall primitives: $predicate");
+        carp("Trying to retractall primitives: $predicate");
         return;
     }
     delete $self->{ht}{$predicate};

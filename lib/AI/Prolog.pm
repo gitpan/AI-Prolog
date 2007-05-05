@@ -1,6 +1,7 @@
 package AI::Prolog;
-$VERSION = '0.738';    ## no critic
+$VERSION = '0.739';    ## no critic
 use strict;
+use Carp qw( confess carp croak );
 
 use Hash::Util 'lock_keys';
 use Exporter::Tidy shortcuts => [qw/Parser Term Engine/];
@@ -55,9 +56,7 @@ sub query {
 sub results {
     my $self = shift;
     unless ( defined $self->{_query} ) {
-        require Carp;
-        Carp::croak
-            "You can't fetch results because you have not set a query";
+        croak "You can't fetch results because you have not set a query";
     }
     $self->{_engine}->results;
 }

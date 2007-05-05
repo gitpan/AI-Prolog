@@ -1,5 +1,13 @@
 Revision history for Perl extension AI::Prolog.
 
+0.739 2007-05-04
+      Explicitly import Carp. This fixes a bug exposed by
+      warnings.pm. Thanks to Andreas Koenig for sending in the failing test.
+
+0.738 2007-05-01
+      Several test modules are now optional by virtue of a patch by
+      educated_foo.
+
 0.737 2007-03-21
       Removed the Build.PL because CPAN.pm does the wrong thing here
       and there's no additional functionality provided by

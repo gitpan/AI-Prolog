@@ -5,6 +5,7 @@ $VERSION = 0.03;
 
 use strict;
 use warnings;
+use Carp qw( croak confess );
 
 use Hash::Util 'lock_keys';
 
@@ -22,12 +23,11 @@ sub new {
     return _new_from_term( $class, @_ ) if 1 == @_ && $_[0]->isa(Term);
     return _new_from_term_and_next( $class, @_ ) if 2 == @_;
     if (@_) {
-        require Carp;
-        Carp::croak "Unknown arguments to TermList->new:  @_";
+        croak "Unknown arguments to TermList->new:  @_";
     }
     my $self = bless {
-        term        => undef,
-        next        => undef,
+        term => undef,
+        next => undef,
         next_clause =>
             undef,    # serves two purposes: either links clauses in database
                       # or points to defining clause for goals
@@ -74,8 +74,7 @@ sub next_clause {
         my $next_clause = shift;
         no warnings 'uninitialized';
         if ( $next_clause eq $self ) {
-            require Carp;
-            Carp::confess("Trying to assign a termlist as its own successor");
+            confess("Trying to assign a termlist as its own successor");
         }
         $self->{next_clause} = $next_clause;
         return $self;

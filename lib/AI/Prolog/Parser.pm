@@ -4,6 +4,7 @@ $REVISION = '$Id: Parser.pm,v 1.9 2005/08/06 23:28:40 ovid Exp $';
 $VERSION = '0.10';
 use strict;
 use warnings;
+use Carp qw( confess croak );
 use Regexp::Common;
 use Hash::Util 'lock_keys';
 
@@ -46,8 +47,7 @@ sub _vardict_to_string {
             sort { $a->[2] <=> $b->[2] }
             map { [ $_, $self->_sortable_term( $self->{_vardict}{$_} ) ] }
             keys %{ $self->{_vardict} }
-        )
-        . "}";
+        ) . "}";
 }
 
 sub _sortable_term {
@@ -202,8 +202,7 @@ sub get_anon {
 sub parseerror {
     my ( $self, $character ) = @_;
     my $linenum = $self->linenum;
-    require Carp;
-    Carp::croak "Unexpected character: ($character) at line number $linenum";
+    croak "Unexpected character: ($character) at line number $linenum";
 }
 
 # skips whitespace and prolog comments

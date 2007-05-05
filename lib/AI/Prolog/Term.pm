@@ -4,6 +4,7 @@ $REVISION = '$Id: Term.pm,v 1.10 2005/08/06 23:28:40 ovid Exp $';
 $VERSION = '0.06';
 use strict;
 use warnings;
+use Carp qw( croak confess );
 
 use Hash::Util 'lock_keys';
 
@@ -59,8 +60,7 @@ sub new {
 
 #return $arg->_term($class)            if   CORE::ref $arg && $arg->isa(Parser);
     }
-    require Carp;
-    Carp::croak("Unknown arguments to Term->new");
+    croak("Unknown arguments to Term->new");
 }
 
 sub _new_from_string {
@@ -125,7 +125,7 @@ sub _new_with_id {
 sub _new_from_functor_and_arity {
     my ( $class, $functor, $arity ) = @_;
     my $print_functor = defined $functor ? $functor : 'null';
-    Carp::confess "undefined arity" unless defined $arity;
+    confess "undefined arity" unless defined $arity;
 
     #print "*** _new_from_functor_and_arity: ($print_functor) ($arity)";
     my $self = bless {
@@ -198,8 +198,7 @@ sub bind {
         $self->{ref}   = $term;
     }
     else {
-        require Carp;
-        Carp::croak( "AI::Prolog::Term->bind("
+        croak(    "AI::Prolog::Term->bind("
                 . $self->to_string
                 . ").  Cannot bind to nonvar!" );
     }
@@ -225,8 +224,7 @@ sub setarg {
         $self->{args}[$pos] = $val;
     }
     else {
-        require Carp;
-        Carp::croak( "AI::Prolog::Term->setarg($pos, "
+        croak(    "AI::Prolog::Term->setarg($pos, "
                 . $val->to_string
                 . ").  Cannot setarg on variables!" );
     }
@@ -242,9 +240,7 @@ sub getarg {
         return $self->{args}[$pos];
     }
     else {
-        require Carp;
-        Carp::croak(
-            "AI::Prolog::Term->getarg.  Error -- lookup on unbound term!");
+        croak("AI::Prolog::Term->getarg.  Error -- lookup on unbound term!");
     }
 }
 
@@ -574,9 +570,8 @@ sub value {
     my ( $i, $res ) = ( 0, 0 );
 
     unless ( $self->{bound} ) {
-        require Carp;
         my $term = $self->to_string;
-        Carp::croak("Tried to to get value of unbound term ($term)");
+        croak("Tried to to get value of unbound term ($term)");
     }
     return $self->{ref}->value if $self->{deref};
     my $functor = $self->getfunctor;
@@ -586,9 +581,8 @@ sub value {
         # implement rand
     }
     if ( $arity < 2 ) {
-        require Carp;
         my $term = $self->to_string;
-        Carp::croak("Term ($term) is not binary");
+        croak("Term ($term) is not binary");
     }
     my $arg0 = $self->{args}[0]->value;
     my $arg1 = $self->{args}[1]->value;
@@ -599,8 +593,7 @@ sub value {
     return $arg0 / $arg1 if 'div'   eq $functor;
     return $arg0 % $arg1 if 'mod'   eq $functor;
     return $arg0**$arg1  if 'pow'   eq $functor;
-    require Carp;
-    Carp::croak("Unknown operator ($functor)");
+    croak("Unknown operator ($functor)");
 }
 
 1;

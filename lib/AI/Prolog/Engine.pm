@@ -3,6 +3,7 @@ $REVISION = '$Id: Engine.pm,v 1.13 2005/08/06 23:28:40 ovid Exp $';
 $VERSION  = '0.3';
 use strict;
 use warnings;
+use Carp qw( confess carp );
 
 use Scalar::Util qw/looks_like_number/;
 use Hash::Util 'lock_keys';
@@ -163,8 +164,7 @@ sub new {
         $self->_adding_builtins(0);
     };
     if ($@) {
-        require Carp;
-        Carp::croak("Engine->new failed.  Cannot parse default program: $@");
+        croak("Engine->new failed.  Cannot parse default program: $@");
     }
     $self->{_retract_clause} = $self->{_db}->get("retract/1");
     $self->{_goal}->resolve( $self->{_db} );
@@ -243,8 +243,7 @@ sub _run {
         }
 
         unless ( $self->{_goal} && $self->{_goal}{term} ) {
-            require Carp;
-            Carp::croak("Engine->run fatal error.  goal->term is null!");
+            croak("Engine->run fatal error.  goal->term is null!");
         }
         unless ( $self->{_goal}->{next_clause} ) {
             my $predicate = $self->{_goal}{term}->predicate;
