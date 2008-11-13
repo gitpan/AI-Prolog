@@ -1,16 +1,22 @@
 #!/usr/bin/perl
-# '$Id: 60aiprolog.t,v 1.3 2005/05/14 18:03:05 ovid Exp $';
 use warnings;
 use strict;
 use Test::More;
-eval q{
-use Test::MockModule;
-use Test::Differences};
-if ($@) {
-    plan skip_all => 'Test::MockModule, Test::Differences required for this';
-    exit 0;
-} else {
-    plan tests => 4;
+BEGIN
+{
+    my $fixture_ok = eval q{
+        use Test::MockModule;
+        use Test::Differences;
+
+        1;
+    };
+    if ( ! $fixture_ok ) {
+        plan skip_all => 'Test::MockModule, Test::Differences required for this';
+        exit 0;
+    }
+    else {
+        plan tests => 4;
+    }
 }
 
 my $CLASS;

@@ -1,5 +1,8 @@
 Revision history for Perl extension AI::Prolog.
 
+0.740 2008-11-12
+      t/60aiprolog.t loads modules in the right order now
+
 0.739 2007-05-04
       Explicitly import Carp. This fixes a bug exposed by
       warnings.pm. Thanks to Andreas Koenig for sending in the failing test.

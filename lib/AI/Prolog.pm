@@ -1,5 +1,5 @@
 package AI::Prolog;
-$VERSION = '0.739';    ## no critic
+$VERSION = '0.740';    ## no critic
 use strict;
 use Carp qw( confess carp croak );
 
