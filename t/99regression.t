@@ -4,8 +4,7 @@ use warnings;
 use strict;
 use Test::More;
 BEGIN {
-eval q{use Test::MockModule;
-use Test::Exception};
+eval q{use Test::MockModule};
 if ($@) {
     plan skip_all => "Test::MockModule, Test::Exception required for this";
 } else {

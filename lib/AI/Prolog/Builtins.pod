@@ -400,22 +400,7 @@ Logical comparisons are straightforward:
 
 =head1 BUGS
 
-Currently we cannot directly access bound variables in the tail of a list used
-in a query when using unformatted results:
-
- $prolog->query('foo([Head|Tail], bar).');
- while (my $result = $prolog->results) {
-    print Dumper $result->Head;
-    print Dumper $result->Tail; # doesn't work
- }
-
-You'll have to switch to C<raw_results> and parse the data manually:
-
- $prolog->raw_results(1);
- $prolog->query('foo([Head|Tail], bar).');
- while (my $result = $prolog->results) {
-     print Dumper $result;
- }    
+None known.
 
 =head1 SEE ALSO
 

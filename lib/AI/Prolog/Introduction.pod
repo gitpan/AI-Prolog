@@ -101,6 +101,7 @@ Translating all of this into C<AI::Prolog> looks like this:
  use Data::Dumper;
 
  my $prolog = AI::Prolog->new(append_prog());
+ $prolog->raw_results(0) # Disable raw results
  $prolog->query("append(X,Y,[a,b,c,d])");
  while (my $result = $prolog->results) {
      print Dumper($result->X); # array references

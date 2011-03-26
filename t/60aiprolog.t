@@ -1,23 +1,7 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
-use Test::More;
-BEGIN
-{
-    my $fixture_ok = eval q{
-        use Test::MockModule;
-        use Test::Differences;
-
-        1;
-    };
-    if ( ! $fixture_ok ) {
-        plan skip_all => 'Test::MockModule, Test::Differences required for this';
-        exit 0;
-    }
-    else {
-        plan tests => 4;
-    }
-}
+use Test::More tests => 5;
 
 my $CLASS;
 BEGIN

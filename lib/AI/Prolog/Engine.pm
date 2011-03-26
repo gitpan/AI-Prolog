@@ -1,6 +1,6 @@
 package AI::Prolog::Engine;
 $REVISION = '$Id: Engine.pm,v 1.13 2005/08/06 23:28:40 ovid Exp $';
-$VERSION  = '0.3';
+$VERSION  = '0.4';
 use strict;
 use warnings;
 use Carp qw( confess carp );
@@ -504,12 +504,7 @@ method can double the speed of your program.
 
 =head1 BUGS
 
-A query using C<[HEAD|TAIL]> syntax does not bind properly with the C<TAIL>
-variable when returning a result object.  This is due to a bug in
-L<AI::Prolog::Term|AI::Prolog::Term>'s C<_to_data()> method.
-
-Solutions:  use C<raw_results> and parse the resulting data structure yourself
-or restructure you query to not require the C<[HEAD|TAIL]> syntax.
+None known.
 
 =head1 AUTHOR
 

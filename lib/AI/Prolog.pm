@@ -1,5 +1,5 @@
 package AI::Prolog;
-$VERSION = '0.740';    ## no critic
+$VERSION = '0.741';    ## no critic
 use strict;
 use Carp qw( confess carp croak );
 
@@ -370,11 +370,6 @@ See C<raw_results> for an alternate way of generating output.
 
 =head1 BUGS
 
-A query using C<[HEAD|TAIL]> syntax does not bind properly with the C<TAIL>
-variable when returning a result object.  You will need to restructure your
-query to avoid this syntax or set C<raw_results> to true and parse the results
-yourself.
-
 See L<AI::Prolog::Builtins|AI::Prolog::Builtins> and
 L<AI::Prolog::Engine|AI::Prolog::Engine> for known bugs and limitations.  Let
 me know if (when) you find them.  See the built-ins TODO list before that,
@@ -383,10 +378,6 @@ though.
 =head1 TODO
 
 =over 4
-
-=item * Find the C<HEAD|TAIL> bug.
-
-See L<BUGS>
 
 =item * Why does this take so long to run?
 

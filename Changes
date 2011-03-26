@@ -1,6 +1,14 @@
 Revision history for Perl extension AI::Prolog.
 
 0.740 2008-11-12
+      t/60aiprolog.t fixed number of planned tests (RT#41154).
+
+      Fixed dependencies in some tests.
+
+      Fixed HEAD|TAIL results bug. Added test (RT#64942).
+      (Should raw_results(0) be default? or keep backward compat?).
+
+0.740 2008-11-12
       t/60aiprolog.t loads modules in the right order now
 
 0.739 2007-05-04

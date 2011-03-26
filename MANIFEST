@@ -53,4 +53,5 @@ t/70builtins.t
 t/80math.t
 t/80preprocessor.t
 t/80preprocessor_math.t
+t/90results.t
 t/99regression.t

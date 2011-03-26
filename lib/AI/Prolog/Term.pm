@@ -1,7 +1,7 @@
 package AI::Prolog::Term;
 $REVISION = '$Id: Term.pm,v 1.10 2005/08/06 23:28:40 ovid Exp $';
 
-$VERSION = '0.06';
+$VERSION = '0.07';
 use strict;
 use warnings;
 use Carp qw( croak confess );
@@ -425,7 +425,11 @@ sub _to_data {
             my $term   = $self->{args}[1];
 
             while ( "cons" eq $term->getfunctor && 2 == $term->getarity ) {
-                push @result => $term->getarg(0)->_to_data($parent);
+                if ( $term->{varname} ) {
+                  push @result => $term->_to_data($parent);
+                } else {
+                  push @result => $term->getarg(0)->_to_data($parent);
+                }
                 $term = $term->getarg(1);
             }
 

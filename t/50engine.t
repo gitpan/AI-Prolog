@@ -2,17 +2,7 @@
 # '$Id: 50engine.t,v 1.10 2005/08/06 23:28:40 ovid Exp $';
 use warnings;
 use strict;
-use Test::More;
-BEGIN {
-eval q{
-use Test::MockModule;
-use Test::Differences};
-if ($@) {
-    plan skip_all => "Test::MockModule and Test::Differences required for this";
-} else {
-    plan tests => 35;
-}
-}
+use Test::More tests => 35;
 
 #use Test::More 'no_plan';
 use Clone qw/clone/;
